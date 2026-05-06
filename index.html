@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZIGZAG TỬ THẦN - BẢN VŨ TRỤ</title>
+    <style>
+        /* CANH GIỮA TOÀN BỘ MÀN HÌNH */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #030305; /* Viền ngoài tối đen */
+            color: #fff;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; 
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            background-color: #05050a; /* Đổi nền container thành đen vũ trụ */
+            box-shadow: 0 0 60px rgba(0, 150, 255, 0.2); /* Đổi bóng mờ thành viền xanh vũ trụ */
+            border-radius: 8px; 
+            overflow: hidden;
+            transform-origin: center center; 
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        #ui {
+            position: absolute;
+            top: 8%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+        #score {
+            font-size: 80px;
+            font-weight: 900;
+            margin: 0;
+            opacity: 0.8;
+        }
+        
+        #instruction {
+            position: absolute;
+            bottom: 55%; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            text-align: center;
+            color: #ddd;
+            font-size: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 10; 
+            pointer-events: none;
+            animation: blink 1.2s infinite; 
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        #gameOverBoard {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(5, 5, 10, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 100;
+            min-width: 250px;
+            border: 4px solid #fff;
+            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+        }
+        #gameOverBoard h2 {
+            margin: 0 0 20px 0;
+            font-size: 28px;
+            color: #ff4444;
+        }
+        .score-info {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #ccc;
+        }
+        .score-val {
+            font-size: 45px;
+            display: block;
+            font-weight: bold;
+            color: #fff;
+        }
+        #btnRestart {
+            margin-top: 25px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            pointer-events: auto;
+            text-transform: uppercase;
+            transition: transform 0.1s;
+        }
+        #btnRestart:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <div id="ui">
+            <p id="score">0</p>
+        </div>
+        <div id="instruction">CHẠM MÀN HÌNH ĐỂ BẮT ĐẦU</div>
+        <div id="gameOverBoard">
+            <h2 id="deathMsg">KẾT THÚC!</h2>
+            <div class="score-info">ĐIỂM VỪA ĐẠT:<br><span id="finalScore" class="score-val">0</span></div>
+            <div class="score-info">KỶ LỤC CỦA BẠN:<br><span id="highScore" class="score-val">0</span></div>
+            <button id="btnRestart">CHƠI LẠI</button>
+        </div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+    </div>
+
+    <script>
+        const container = document.getElementById('gameContainer');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const boardEl = document.getElementById('gameOverBoard');
+        const finalScoreEl = document.getElementById('finalScore');
+        const highScoreEl = document.getElementById('highScore');
+        const btnRestart = document.getElementById('btnRestart');
+        const instructionEl = document.getElementById('instruction');
+
+        function resizeGame() {
+            let scale = Math.min((window.innerWidth - 20) / 400, (window.innerHeight - 20) / 600);
+            if (scale > 1.3) scale = 1.3;
+            container.style.transform = `scale(${scale})`;
+        }
+        resizeGame();
+        window.addEventListener('resize', resizeGame);
+
+        let isGameOver = false;
+        let gameStarted = false;
+        let score = 0;
+        let gameSpeed = 3;
+        let particles = [];
+        let obstacles = [];
+        let stars = []; // Mảng chứa các vì sao
+        let currentBallHue = Math.floor(Math.random() * 360);
+        let savedHighScore = localStorage.getItem('zigzag_highscore') || 0;
+
+        // CẤU HÌNH TƯỜNG GAI
+        const spikeWidth = 14;  
+        const spikeHeight = 24; 
+        let spikeOffsetY = 0;   
+
+        function getDistinctColor() {
+            currentBallHue = (currentBallHue + Math.floor(Math.random() * 200) + 80) % 360;
+            return `hsl(${currentBallHue}, 100%, 60%)`;
+        }
+
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height - 150,
+            radius: 12,
+            vx: 3.5,
+            color: `hsl(${currentBallHue}, 100%, 60%)`,
+            visible: true
+        };
+
+        const obstacleHeight = 20;
+        const gapWidthBase = 120;
+
+        // --- HỆ THỐNG VÌ SAO (STARFIELD) ---
+        class Star {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5; // Kích thước ngẫu nhiên (nhỏ)
+                this.speed = (Math.random() * 2) + 0.5; // Tốc độ trôi ngẫu nhiên (tạo chiều sâu 3D)
+                this.opacity = Math.random() * 0.8 + 0.2;
+            }
+            update() {
+                // Sao rơi nhanh hơn khi game tăng tốc
+                this.y += this.speed + (gameSpeed * 0.3);
+                // Nếu sao trôi khỏi màn hình thì đưa lại lên đầu
+                if (this.y > canvas.height) {
+                    this.y = 0;
+                    this.x = Math.random() * canvas.width;
+                    this.size = Math.random() * 1.5 + 0.5;
+                    this.speed = (Math.random() * 2) + 0.5;
+                }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Tạo sẵn 70 ngôi sao lúc mới mở game
+        for(let i = 0; i < 70; i++) {
+            stars.push(new Star());
+        }
+        // ------------------------------------
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12;
+                this.radius = Math.random() * 4 + 1;
+                this.life = 100;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.vx *= 0.95; this.vy *= 0.95;
+                this.life -= 2;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life / 100;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createObstacle() {
+            let gapWidth = Math.max(65, gapWidthBase - (score * 1.2));
+            let gapX = Math.random() * (canvas.width - gapWidth - spikeWidth*2 - 40) + spikeWidth + 20;
+            obstacles.push({
+                y: -30, gapX: gapX, gapWidth: gapWidth, passed: false,
+                color: `hsl(${Math.random() * 360}, 100%, 60%)`
+            });
+        }
+
+        function resetGame() {
+            score = 0;
+            gameSpeed = 3;
+            obstacles = [];
+            particles = [];
+            spikeOffsetY = 0;
+            isGameOver = false;
+            gameStarted = true;
+            ball.x = canvas.width / 2;
+            ball.vx = 3.5;
+            ball.visible = true;
+            ball.color = getDistinctColor();
+            
+            scoreEl.innerText = score;
+            scoreEl.style.color = ball.color;
+            scoreEl.style.textShadow = `0 0 15px ${ball.color}`;
+            boardEl.style.display = 'none';
+            instructionEl.style.display = 'none';
+            
+            createObstacle();
+        }
+
+        function triggerGameOver() {
+            isGameOver = true;
+            ball.visible = false;
+            for (let i = 0; i < 40; i++) particles.push(new Particle(ball.x, ball.y, ball.color));
+            
+            if (score > savedHighScore) {
+                savedHighScore = score;
+                localStorage.setItem('zigzag_highscore', savedHighScore);
+                document.getElementById('deathMsg').innerText = "KỶ LỤC MỚI!";
+                document.getElementById('deathMsg').style.color = "#00ffcc";
+            } else {
+                document.getElementById('deathMsg').innerText = "BỊ XUYÊN THỦNG!";
+                document.getElementById('deathMsg').style.color = "#ff4444";
+            }
+
+            setTimeout(() => {
+                finalScoreEl.innerText = score;
+                highScoreEl.innerText = savedHighScore;
+                boardEl.style.display = 'block';
+                boardEl.style.boxShadow = `0 0 30px ${ball.color}`;
+                boardEl.style.borderColor = ball.color;
+            }, 700);
+        }
+
+        function update() {
+            // Cập nhật các vì sao
+            stars.forEach(star => star.update());
+
+            particles.forEach((p, i) => {
+                p.update();
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+
+            if (!gameStarted || isGameOver) return;
+
+            spikeOffsetY = (spikeOffsetY + gameSpeed) % spikeHeight;
+
+            ball.x += ball.vx;
+
+            if (ball.x - ball.radius <= spikeWidth || ball.x + ball.radius >= canvas.width - spikeWidth) {
+                triggerGameOver(); return;
+            }
+
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                obs.y += gameSpeed;
+
+                if (ball.y - ball.radius < obs.y + obstacleHeight && ball.y + ball.radius > obs.y) {
+                    if (ball.x - ball.radius < obs.gapX || ball.x + ball.radius > obs.gapX + obs.gapWidth) {
+                        triggerGameOver(); return;
+                    }
+                }
+
+                if (obs.y > ball.y && !obs.passed) {
+                    score++;
+                    scoreEl.innerText = score;
+                    obs.passed = true;
+                    gameSpeed += 0.12;
+                    ball.vx += (ball.vx > 0 ? 0.1 : -0.1);
+                }
+            }
+
+            if (obstacles.length > 0 && obstacles[0].y > canvas.height) obstacles.shift();
+            if (obstacles.length === 0 || obstacles[obstacles.length - 1].y > 220) createObstacle();
+        }
+
+        function draw() {
+            // 1. NỀN VŨ TRỤ (Màu đen sâu thẳm hơi ngả xanh tối, để lại vệt mờ motion blur)
+            ctx.fillStyle = "rgba(5, 5, 10, 0.35)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1.5 VẼ CÁC VÌ SAO (Sao vẽ sau lớp nền mờ sẽ kéo thành những vệt sáng cực đẹp)
+            stars.forEach(star => star.draw());
+
+            // 2. VẼ THANH CHƯỚNG NGẠI VẬT
+            obstacles.forEach(obs => {
+                ctx.fillStyle = obs.color;
+                ctx.shadowBlur = 10; ctx.shadowColor = obs.color;
+                ctx.fillRect(0, obs.y, obs.gapX, obstacleHeight);
+                ctx.fillRect(obs.gapX + obs.gapWidth, obs.y, canvas.width - (obs.gapX + obs.gapWidth), obstacleHeight);
+                ctx.shadowBlur = 0;
+            });
+
+            // 3. VẼ 2 TƯỜNG GAI RĂNG CƯA
+            ctx.fillStyle = '#ff2222';
+            ctx.shadowBlur = 15; 
+            ctx.shadowColor = '#ff0000'; 
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            for (let y = -spikeHeight + spikeOffsetY; y < canvas.height + spikeHeight; y += spikeHeight) {
+                ctx.lineTo(spikeWidth, y + spikeHeight / 2); 
+                ctx.lineTo(0, y + spikeHeight);              
+            }
+            ctx.lineTo(0, 0);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(canvas.width, 0);
+            for (let y = -spikeHeight + spikeOffsetY; y < canvas.height + spikeHeight; y += spikeHeight) {
+                ctx.lineTo(canvas.width - spikeWidth, y + spikeHeight / 2); 
+                ctx.lineTo(canvas.width, y + spikeHeight);                  
+            }
+            ctx.lineTo(canvas.width, 0);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0; 
+
+            // 4. VẼ HIỆU ỨNG NỔ
+            particles.forEach(p => p.draw());
+
+            // 5. VẼ TRÁI BÓNG CHÍNH
+            if (ball.visible) {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = ball.color;
+                ctx.shadowBlur = 15; ctx.shadowColor = ball.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function loop() {
+            update();
+            draw(); 
+            requestAnimationFrame(loop);
+        }
+
+        function handleInput(e) {
+            if (boardEl.style.display === 'block') return;
+            e.preventDefault();
+            
+            if (!gameStarted) {
+                gameStarted = true;
+                instructionEl.style.display = 'none'; 
+                if(obstacles.length === 0) createObstacle();
+            } 
+            else if (!isGameOver) {
+                ball.vx *= -1;
+            }
+        }
+
+        container.addEventListener('mousedown', handleInput);
+        container.addEventListener('touchstart', handleInput, {passive: false});
+        
+        btnRestart.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            resetGame();
+        });
+
+        scoreEl.style.color = ball.color;
+        scoreEl.style.textShadow = `0 0 15px ${ball.color}`;
+        
+        loop(); 
+    </script>
+</body>
+</html>

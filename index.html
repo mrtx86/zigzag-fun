@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOGE PUMP - CRYPTO CHAOS EDITION</title>
+    <title>DOGE PUMP - CRYPTO DEGEN EDITION</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
@@ -61,6 +61,20 @@
             transition: opacity 0.5s ease; 
         }
         
+        /* CHÂN DUNG XUẤT HIỆN Ở MÀN HÌNH CHỜ - x2 Size */
+        #startMockCanvas {
+            position: absolute;
+            bottom: 66%; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 96px; 
+            height: 96px;
+            background: transparent;
+            image-rendering: pixelated;
+            z-index: 10;
+            pointer-events: none;
+        }
+
         #instruction {
             position: absolute;
             bottom: 55%; 
@@ -97,9 +111,10 @@
             box-sizing: border-box;
         }
 
+        /* DOGE CHÍNH */
         #avatarCanvas {
             display: block;
-            margin: 0 auto 10px auto;
+            margin: 10px auto; 
             width: 128px; 
             height: 128px;
             background: transparent; 
@@ -108,7 +123,7 @@
         }
 
         #gameOverBoard h2 {
-            margin: 0 0 10px 0;
+            margin: 5px 0 5px 0;
             font-size: 16px; 
             color: #ff3333; 
             text-transform: uppercase;
@@ -118,7 +133,7 @@
         #tauntText {
             font-size: 8px; 
             color: #FDCB58; 
-            margin: 0 0 15px 0;
+            margin: 0 0 10px 0;
             text-transform: uppercase;
             line-height: 1.6;
             min-height: 25px;
@@ -126,7 +141,7 @@
 
         .score-info {
             font-size: 11px;
-            margin: 10px 0;
+            margin: 5px 0;
             color: #aaaaaa;
             line-height: 1.5;
         }
@@ -168,13 +183,18 @@
         <div id="ui">
             <p id="score">$0</p>
         </div>
+        
+        <canvas id="startMockCanvas" width="64" height="64"></canvas>
         <div id="instruction">TAP TO PUMP<br>TO THE MOON</div>
+        
         <div id="gameOverBoard">
             <canvas id="avatarCanvas" width="64" height="64"></canvas>
+            
             <h2 id="deathMsg">LIQUIDATED!</h2>
             <div id="tauntText">WOW. MUCH REKT.</div>
             <div class="score-info">PNL:<br><span id="finalScore" class="score-val">$0</span></div>
             <div class="score-info">ATH:<br><span id="highScore" class="score-val">$0</span></div>
+            
             <button id="btnRestart">BUY THE DIP</button>
         </div>
         <canvas id="gameCanvas" width="400" height="600"></canvas>
@@ -187,6 +207,9 @@
         const avatarCanvas = document.getElementById('avatarCanvas');
         const avatarCtx = avatarCanvas.getContext('2d');
         
+        const startMockCanvas = document.getElementById('startMockCanvas');
+        const startMockCtx = startMockCanvas.getContext('2d');
+        
         const scoreEl = document.getElementById('score');
         const boardEl = document.getElementById('gameOverBoard');
         const finalScoreEl = document.getElementById('finalScore');
@@ -197,6 +220,7 @@
 
         ctx.imageSmoothingEnabled = false;
         avatarCtx.imageSmoothingEnabled = false;
+        startMockCtx.imageSmoothingEnabled = false;
 
         function resizeGame() {
             let scale = Math.min((window.innerWidth - 20) / 400, (window.innerHeight - 20) / 600);
@@ -206,8 +230,10 @@
         resizeGame();
         window.addEventListener('resize', resizeGame);
 
+        // x2 Kích thước drawing unit cho mặt người
+        const P_SIZE_UI = 4; 
         const P_SIZE = 4; 
-        
+
         const DOGE_GOLD = '#FDCB58'; 
         const DOGE_WHITE = '#FFFFFF'; 
         const DOGE_BLACK = '#000000'; 
@@ -221,7 +247,7 @@
         let particles = [];
         let obstacles = [];
         let stars = []; 
-        let floatingTexts = []; // Mảng chứa hiệu ứng chữ bay lên
+        let floatingTexts = []; 
 
         let savedHighScore = localStorage.getItem('zigzag_crypto_ath') || 0;
         let nextSpawnDistance = 150; 
@@ -232,20 +258,14 @@
         let spikeOffsetY = 0;   
 
         const taunts = [
-            "Buy high, sell low like a pro.",
+            "Funds are NOT Safu.",
+            "Elon is laughing at your paper hands.",
+            "CZ is disappointed in you.",
+            "Trump calls you a 'Loser'.",
+            "Degen skills not included.",
             "Say goodbye to your house, anon.",
             "Paper hands detected.",
-            "Should have taken profits.",
-            "Your portfolio is bleeding.",
-            "Not going to the moon today.",
-            "Is this the bottom? (No)",
-            "Just one more trade...",
-            "Wen Lambo? Wen Binance?",
-            "Have fun staying poor!",
-            "Sir, this is a casino.",
-            "Diamond hands turned to dust.",
-            "You just got rug pulled.",
-            "CZ is watching you fail.",
+            "Buy high, sell low like a pro.",
             "FOMO is a disease."
         ];
 
@@ -309,33 +329,101 @@
             }
         }
 
-        // LỚP VẼ CHỮ BAY LÊN + FADE OUT
         class FloatingText {
             constructor(x, y, text) {
                 this.x = x;
                 this.y = y;
                 this.text = text;
                 this.alpha = 1;
-                this.vy = -1.5; // Tốc độ bay lên
+                this.vy = -1.5; 
             }
             update() {
                 this.y += this.vy;
-                this.alpha -= 0.025; // Tốc độ mờ dần
+                this.alpha -= 0.025; 
             }
             draw() {
                 if (this.alpha <= 0) return;
                 ctx.save();
                 ctx.globalAlpha = Math.max(0, this.alpha);
-                ctx.fillStyle = '#00ff00'; // Màu xanh tiền
+                ctx.fillStyle = '#00ff00'; 
                 ctx.font = '12px "Press Start 2P", cursive';
                 ctx.textAlign = 'center';
-                // Bóng đen bao quanh để dễ đọc hơn trên nền game
                 ctx.shadowColor = '#000000';
                 ctx.shadowBlur = 0;
                 ctx.shadowOffsetX = 2;
                 ctx.shadowOffsetY = 2;
                 ctx.fillText(this.text, this.x, this.y);
                 ctx.restore();
+            }
+        }
+
+        // --- CÁC HÀM VẼ PIXEL ART CHÂN DUNG CỔ ĐIỂN ---
+
+        // Trump: Profile view (nhìn ngang)
+        function drawTrumpSprite(curCtx, x, y) {
+            // Khối da nghiêng (Orange)
+            curCtx.fillStyle = '#F4A261';
+            curCtx.fillRect(x - 4*P_SIZE_UI, y - 4*P_SIZE_UI, 9*P_SIZE_UI, 9*P_SIZE_UI); 
+            curCtx.fillRect(x - 5*P_SIZE_UI, y, P_SIZE_UI, 4*P_SIZE_UI);
+
+            // Tóc vàng bồng bềnh
+            curCtx.fillStyle = '#E9C46A';
+            curCtx.fillRect(x - 6*P_SIZE_UI, y - 6*P_SIZE_UI, 12*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillRect(x + 2*P_SIZE_UI, y - 7*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x - 4*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+
+            // Chi tiết mặt nghiêng
+            curCtx.fillStyle = '#000000';
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); // Mắt
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI); // Miệng
+        }
+
+        // Musk: Frontal view
+        function drawElonSprite(curCtx, x, y) {
+            curCtx.fillStyle = '#E0AC69';
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y + 4*P_SIZE_UI, 6*P_SIZE_UI, 2*P_SIZE_UI); 
+
+            curCtx.fillStyle = '#8D6E63';
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 6*P_SIZE_UI, 10*P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x - 6*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillRect(x + 5*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 3*P_SIZE_UI); 
+
+            curCtx.fillStyle = '#000000';
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x + 2*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x - 2*P_SIZE_UI, y + 2*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
+        }
+
+        // CZ: Frontal view
+        function drawCZSprite(curCtx, x, y) {
+            curCtx.fillStyle = '#DDBE96';
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI); 
+
+            curCtx.fillStyle = '#9E9E9E';
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x + 4*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+
+            curCtx.fillStyle = '#000000';
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x + 2*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x - 2*P_SIZE_UI, y + 2*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
+
+            curCtx.fillStyle = '#9E9E9E';
+            curCtx.fillRect(x - 2*P_SIZE_UI, y + 4*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x - 1*P_SIZE_UI, y + 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+        }
+
+        function setRandomStartFace() {
+            startMockCtx.clearRect(0, 0, startMockCanvas.width, startMockCanvas.height);
+            const randomMockChoice = Math.floor(Math.random() * 3);
+            if (randomMockChoice === 0) {
+                drawTrumpSprite(startMockCtx, 32, 32);
+            } else if (randomMockChoice === 1) {
+                drawElonSprite(startMockCtx, 32, 32);
+            } else {
+                drawCZSprite(startMockCtx, 32, 32);
             }
         }
 
@@ -365,10 +453,10 @@
             gameSpeed = 3.5;
             obstacles = [];
             particles = [];
-            floatingTexts = []; // Xóa các hiệu ứng chữ bay của ván trước
+            floatingTexts = []; 
             spikeOffsetY = 0;
             isGameOver = false;
-            gameStarted = true;
+            gameStarted = false; 
             ball.x = canvas.width / 2;
             ball.vx = 4;
             ball.visible = true;
@@ -376,9 +464,10 @@
             scoreEl.style.opacity = '1';
             scoreEl.innerText = "$" + score;
             boardEl.style.display = 'none';
-            instructionEl.style.display = 'none';
             
-            createObstacle();
+            instructionEl.style.display = 'block';
+            startMockCanvas.style.display = 'block';
+            setRandomStartFace();
         }
 
         function drawDogeSprite(curCtx, x, y) {
@@ -439,6 +528,20 @@
             isGameOver = true;
             ball.visible = false;
             
+            setTimeout(() => {
+                avatarCtx.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
+                
+                drawPixelatedChart(avatarCtx, 64, 64, 0.25); 
+                avatarCtx.globalAlpha = 1;
+                drawDogeSprite(avatarCtx, 32, 32);
+
+                scoreEl.style.opacity = '0'; 
+                
+                finalScoreEl.innerText = "$" + score;
+                highScoreEl.innerText = "$" + savedHighScore;
+                boardEl.style.display = 'block';
+            }, 600);
+            
             for (let i = 0; i < 40; i++) particles.push(new Particle(ball.x, ball.y, DOGE_GOLD));
             
             if (score > savedHighScore) {
@@ -453,21 +556,6 @@
 
             const randomTaunt = taunts[Math.floor(Math.random() * taunts.length)];
             tauntTextEl.innerText = `"${randomTaunt}"`;
-
-            avatarCtx.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
-            
-            drawPixelatedChart(avatarCtx, 64, 64, 0.25); 
-            
-            avatarCtx.globalAlpha = 1;
-            drawDogeSprite(avatarCtx, 32, 32);
-
-            setTimeout(() => {
-                scoreEl.style.opacity = '0'; 
-                
-                finalScoreEl.innerText = "$" + score;
-                highScoreEl.innerText = "$" + savedHighScore;
-                boardEl.style.display = 'block';
-            }, 600);
         }
 
         function update() {
@@ -478,7 +566,6 @@
                 if (p.life <= 0) particles.splice(i, 1);
             });
 
-            // Cập nhật hiệu ứng chữ
             floatingTexts.forEach((ft, i) => {
                 ft.update();
                 if (ft.alpha <= 0) floatingTexts.splice(i, 1);
@@ -512,7 +599,6 @@
                     gameSpeed += 0.15;
                     ball.vx += (ball.vx > 0 ? 0.15 : -0.15);
 
-                    // TẠO HIỆU ỨNG CHỮ +$1 BAY LÊN NGAY TRÊN ĐẦU CHÚ CHÓ
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 20, "+$1"));
                 }
             }
@@ -571,7 +657,6 @@
                 drawDogeSprite(ctx, snapX, snapY);
             }
 
-            // VẼ HIỆU ỨNG CHỮ CUỐI CÙNG (Để đè lên trên tất cả các layer khác)
             floatingTexts.forEach(ft => ft.draw());
         }
 
@@ -588,6 +673,7 @@
             if (!gameStarted) {
                 gameStarted = true;
                 instructionEl.style.display = 'none'; 
+                startMockCanvas.style.display = 'none'; 
                 if(obstacles.length === 0) createObstacle();
             } 
             else if (!isGameOver) {
@@ -606,10 +692,10 @@
 
         btnRestart.addEventListener('click', (e) => {
             e.stopPropagation(); 
-            scoreEl.style.display = 'block'; 
             resetGame();
         });
         
+        setRandomStartFace();
         loop(); 
     </script>
 </body>

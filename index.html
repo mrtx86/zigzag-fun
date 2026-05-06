@@ -1,17 +1,19 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ZIGZAG TỬ THẦN - BẢN VŨ TRỤ</title>
+    <title>DEATH ZIGZAG - DOGE EDITION</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
     <style>
-        /* CANH GIỮA TOÀN BỘ MÀN HÌNH */
         body {
             margin: 0;
             padding: 0;
-            background-color: #030305; /* Viền ngoài tối đen */
+            background-color: #000;
             color: #fff;
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Press Start 2P', cursive; 
             overflow: hidden;
             touch-action: none;
             display: flex;
@@ -20,13 +22,19 @@
             height: 100vh; 
         }
 
+        canvas, #gameContainer {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated; 
+            image-rendering: crisp-edges;
+        }
+
         #gameContainer {
             position: relative;
             width: 400px;
             height: 600px;
-            background-color: #05050a; /* Đổi nền container thành đen vũ trụ */
-            box-shadow: 0 0 60px rgba(0, 150, 255, 0.2); /* Đổi bóng mờ thành viền xanh vũ trụ */
-            border-radius: 8px; 
+            background-color: #000000; 
+            border: 6px solid #ffffff;
             overflow: hidden;
             transform-origin: center center; 
         }
@@ -37,7 +45,7 @@
 
         #ui {
             position: absolute;
-            top: 8%;
+            top: 5%;
             left: 0;
             width: 100%;
             text-align: center;
@@ -45,10 +53,10 @@
             z-index: 5;
         }
         #score {
-            font-size: 80px;
-            font-weight: 900;
+            font-size: 40px; 
             margin: 0;
-            opacity: 0.8;
+            color: #ffffff;
+            text-shadow: 4px 4px 0px #555; 
         }
         
         #instruction {
@@ -59,18 +67,17 @@
             width: 90%;
             text-align: center;
             color: #ddd;
-            font-size: 15px;
-            font-weight: bold;
+            font-size: 14px; /* Tăng nhẹ size vì tiếng Anh ngắn gọn hơn */
             text-transform: uppercase;
-            letter-spacing: 1px;
+            line-height: 1.6;
             z-index: 10; 
             pointer-events: none;
-            animation: blink 1.2s infinite; 
+            animation: blink 0.8s infinite steps(2, start); 
         }
 
         @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
         }
 
         #gameOverBoard {
@@ -78,48 +85,65 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(5, 5, 10, 0.95);
-            padding: 30px;
-            border-radius: 20px;
+            background: #000000;
+            padding: 20px 15px; 
             text-align: center;
             display: none;
             z-index: 100;
-            min-width: 250px;
-            border: 4px solid #fff;
-            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+            width: 260px; 
+            border: 6px solid #ffffff;
+            box-sizing: border-box;
         }
+
+        #avatarCanvas {
+            display: block;
+            margin: 0 auto 15px auto;
+            width: 72px; 
+            height: 72px;
+            background: #222;
+            border: 4px solid #ffffff;
+            image-rendering: pixelated;
+        }
+
         #gameOverBoard h2 {
             margin: 0 0 20px 0;
-            font-size: 28px;
-            color: #ff4444;
+            font-size: 16px; 
+            color: #ff3333; 
+            text-transform: uppercase;
+            line-height: 1.5;
         }
         .score-info {
-            font-size: 18px;
+            font-size: 11px;
             margin: 10px 0;
-            color: #ccc;
+            color: #aaaaaa;
+            line-height: 1.5;
         }
         .score-val {
-            font-size: 45px;
+            font-size: 24px; 
             display: block;
-            font-weight: bold;
-            color: #fff;
+            color: #ffffff;
+            margin-top: 8px;
+            text-shadow: 2px 2px 0px #555;
         }
         #btnRestart {
             margin-top: 25px;
-            padding: 12px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            background: #fff;
-            color: #000;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-family: 'Press Start 2P', cursive; 
+            background: #ffffff;
+            color: #000000;
             border: none;
-            border-radius: 50px;
+            border-radius: 0; 
             cursor: pointer;
             pointer-events: auto;
             text-transform: uppercase;
-            transition: transform 0.1s;
+        }
+        #btnRestart:hover {
+            background: #cccccc;
         }
         #btnRestart:active {
-            transform: scale(0.95);
+            background: #888888;
+            transform: translateY(4px);
         }
     </style>
 </head>
@@ -129,12 +153,13 @@
         <div id="ui">
             <p id="score">0</p>
         </div>
-        <div id="instruction">CHẠM MÀN HÌNH ĐỂ BẮT ĐẦU</div>
+        <div id="instruction">TAP TO<br>START</div>
         <div id="gameOverBoard">
-            <h2 id="deathMsg">KẾT THÚC!</h2>
-            <div class="score-info">ĐIỂM VỪA ĐẠT:<br><span id="finalScore" class="score-val">0</span></div>
-            <div class="score-info">KỶ LỤC CỦA BẠN:<br><span id="highScore" class="score-val">0</span></div>
-            <button id="btnRestart">CHƠI LẠI</button>
+            <canvas id="avatarCanvas" width="64" height="64"></canvas>
+            <h2 id="deathMsg">GAME OVER!</h2>
+            <div class="score-info">SCORE:<br><span id="finalScore" class="score-val">0</span></div>
+            <div class="score-info">BEST:<br><span id="highScore" class="score-val">0</span></div>
+            <button id="btnRestart">RESTART</button>
         </div>
         <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
@@ -143,12 +168,18 @@
         const container = document.getElementById('gameContainer');
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const avatarCanvas = document.getElementById('avatarCanvas');
+        const avatarCtx = avatarCanvas.getContext('2d');
+        
         const scoreEl = document.getElementById('score');
         const boardEl = document.getElementById('gameOverBoard');
         const finalScoreEl = document.getElementById('finalScore');
         const highScoreEl = document.getElementById('highScore');
         const btnRestart = document.getElementById('btnRestart');
         const instructionEl = document.getElementById('instruction');
+
+        ctx.imageSmoothingEnabled = false;
+        avatarCtx.imageSmoothingEnabled = false;
 
         function resizeGame() {
             let scale = Math.min((window.innerWidth - 20) / 400, (window.innerHeight - 20) / 600);
@@ -158,155 +189,180 @@
         resizeGame();
         window.addEventListener('resize', resizeGame);
 
+        const P_SIZE = 4; 
+        
+        const DOGE_GOLD = '#FDCB58'; 
+        const DOGE_WHITE = '#FFFFFF'; 
+        const DOGE_BLACK = '#000000'; 
+        
+        const obstaclePalette = ['#00ff00', '#00ffff', '#ffff00', '#ff00ff', '#ffffff'];
+        let currentObstaclePaletteIndex = Math.floor(Math.random() * obstaclePalette.length);
+
         let isGameOver = false;
         let gameStarted = false;
         let score = 0;
-        let gameSpeed = 3;
+        let gameSpeed = 3.5; 
         let particles = [];
         let obstacles = [];
-        let stars = []; // Mảng chứa các vì sao
-        let currentBallHue = Math.floor(Math.random() * 360);
+        let stars = []; 
+
         let savedHighScore = localStorage.getItem('zigzag_highscore') || 0;
 
-        // CẤU HÌNH TƯỜNG GAI
-        const spikeWidth = 14;  
-        const spikeHeight = 24; 
+        const spikeWidth = 24;  
+        const spikeHeight = 48; 
+        const wallBase = 8;     
         let spikeOffsetY = 0;   
 
-        function getDistinctColor() {
-            currentBallHue = (currentBallHue + Math.floor(Math.random() * 200) + 80) % 360;
-            return `hsl(${currentBallHue}, 100%, 60%)`;
+        function getDistinctObstacleColor() {
+            currentObstaclePaletteIndex = (currentObstaclePaletteIndex + 1) % obstaclePalette.length;
+            return obstaclePalette[currentObstaclePaletteIndex];
         }
 
         const ball = {
             x: canvas.width / 2,
             y: canvas.height - 150,
-            radius: 12,
-            vx: 3.5,
-            color: `hsl(${currentBallHue}, 100%, 60%)`,
+            radius: 12, 
+            vx: 4,
             visible: true
         };
 
-        const obstacleHeight = 20;
-        const gapWidthBase = 120;
+        const obstacleHeight = 24; 
+        const gapWidthBase = 124;
 
-        // --- HỆ THỐNG VÌ SAO (STARFIELD) ---
         class Star {
             constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 1.5 + 0.5; // Kích thước ngẫu nhiên (nhỏ)
-                this.speed = (Math.random() * 2) + 0.5; // Tốc độ trôi ngẫu nhiên (tạo chiều sâu 3D)
-                this.opacity = Math.random() * 0.8 + 0.2;
+                this.x = Math.floor(Math.random() * canvas.width);
+                this.y = Math.floor(Math.random() * canvas.height);
+                this.size = (Math.random() < 0.3 ? 2 : 1) * P_SIZE; 
+                this.speed = (Math.random() * 1.5) + 0.5; 
             }
             update() {
-                // Sao rơi nhanh hơn khi game tăng tốc
                 this.y += this.speed + (gameSpeed * 0.3);
-                // Nếu sao trôi khỏi màn hình thì đưa lại lên đầu
                 if (this.y > canvas.height) {
-                    this.y = 0;
-                    this.x = Math.random() * canvas.width;
-                    this.size = Math.random() * 1.5 + 0.5;
-                    this.speed = (Math.random() * 2) + 0.5;
+                    this.y = -this.size;
+                    this.x = Math.floor(Math.random() * canvas.width);
                 }
             }
             draw() {
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                let snapY = Math.floor(this.y / P_SIZE) * P_SIZE;
+                let snapX = Math.floor(this.x / P_SIZE) * P_SIZE;
+                ctx.fillRect(snapX, snapY, this.size, this.size);
             }
         }
 
-        // Tạo sẵn 70 ngôi sao lúc mới mở game
-        for(let i = 0; i < 70; i++) {
-            stars.push(new Star());
-        }
-        // ------------------------------------
+        for(let i = 0; i < 40; i++) stars.push(new Star());
 
         class Particle {
             constructor(x, y, color) {
                 this.x = x; this.y = y; this.color = color;
-                this.vx = (Math.random() - 0.5) * 12;
-                this.vy = (Math.random() - 0.5) * 12;
-                this.radius = Math.random() * 4 + 1;
+                this.vx = (Math.random() - 0.5) * 16; 
+                this.vy = (Math.random() - 0.5) * 16;
+                this.size = P_SIZE; 
                 this.life = 100;
             }
             update() {
                 this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.95; this.vy *= 0.95;
-                this.life -= 2;
+                this.vx *= 0.92; this.vy *= 0.92;
+                this.life -= 4; 
             }
             draw() {
-                ctx.save();
-                ctx.globalAlpha = this.life / 100;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.fill();
-                ctx.restore();
+                if (this.life <= 0) return;
+                ctx.fillStyle = this.life > 40 ? this.color : '#888888';
+                let snapX = Math.floor(this.x / P_SIZE) * P_SIZE;
+                let snapY = Math.floor(this.y / P_SIZE) * P_SIZE;
+                ctx.fillRect(snapX, snapY, this.size, this.size);
             }
         }
 
         function createObstacle() {
-            let gapWidth = Math.max(65, gapWidthBase - (score * 1.2));
-            let gapX = Math.random() * (canvas.width - gapWidth - spikeWidth*2 - 40) + spikeWidth + 20;
+            let gapWidth = Math.max(68, gapWidthBase - (score * 1.5));
+            gapWidth = Math.floor(gapWidth / P_SIZE) * P_SIZE;
+            
+            let safeWallDist = spikeWidth + wallBase + 20;
+            let gapX = Math.random() * (canvas.width - gapWidth - safeWallDist*2) + safeWallDist;
+            gapX = Math.floor(gapX / P_SIZE) * P_SIZE;
+
             obstacles.push({
-                y: -30, gapX: gapX, gapWidth: gapWidth, passed: false,
-                color: `hsl(${Math.random() * 360}, 100%, 60%)`
+                y: -40, gapX: gapX, gapWidth: gapWidth, passed: false,
+                color: getDistinctObstacleColor() 
             });
         }
 
         function resetGame() {
             score = 0;
-            gameSpeed = 3;
+            gameSpeed = 3.5;
             obstacles = [];
             particles = [];
             spikeOffsetY = 0;
             isGameOver = false;
             gameStarted = true;
             ball.x = canvas.width / 2;
-            ball.vx = 3.5;
+            ball.vx = 4;
             ball.visible = true;
-            ball.color = getDistinctColor();
             
             scoreEl.innerText = score;
-            scoreEl.style.color = ball.color;
-            scoreEl.style.textShadow = `0 0 15px ${ball.color}`;
             boardEl.style.display = 'none';
             instructionEl.style.display = 'none';
             
             createObstacle();
         }
 
+        function drawDogeSprite(curCtx, x, y) {
+            curCtx.fillStyle = DOGE_GOLD;
+            curCtx.fillRect(x - 12, y - 8, 24, 16); 
+            curCtx.fillRect(x - 8, y - 12, 16, 20); 
+            
+            curCtx.fillRect(x - 12, y - 16, 4, 4);
+            curCtx.fillRect(x - 8, y - 12, 4, 4);
+            curCtx.fillRect(x + 8, y - 16, 4, 4);
+            curCtx.fillRect(x + 4, y - 12, 4, 4);
+
+            curCtx.fillStyle = DOGE_WHITE; 
+            curCtx.fillRect(x - 8, y + 8, 4, 4); 
+            curCtx.fillRect(x + 4, y + 8, 4, 4); 
+
+            curCtx.fillStyle = DOGE_WHITE;
+            curCtx.fillRect(x - 8, y, 16, 8); 
+            curCtx.fillRect(x - 12, y + 4, 4, 4); 
+            curCtx.fillRect(x + 8, y + 4, 4, 4); 
+            curCtx.fillRect(x - 4, y - 4, 8, 4); 
+
+            curCtx.fillStyle = DOGE_BLACK;
+            curCtx.fillRect(x - 2, y + 2, 4, 4);
+
+            curCtx.fillRect(x - 8, y - 4, 4, 4); 
+            curCtx.fillRect(x + 4, y - 4, 4, 4); 
+        }
+
         function triggerGameOver() {
             isGameOver = true;
             ball.visible = false;
-            for (let i = 0; i < 40; i++) particles.push(new Particle(ball.x, ball.y, ball.color));
+            
+            for (let i = 0; i < 40; i++) particles.push(new Particle(ball.x, ball.y, DOGE_GOLD));
             
             if (score > savedHighScore) {
                 savedHighScore = score;
                 localStorage.setItem('zigzag_highscore', savedHighScore);
-                document.getElementById('deathMsg').innerText = "KỶ LỤC MỚI!";
-                document.getElementById('deathMsg').style.color = "#00ffcc";
+                document.getElementById('deathMsg').innerText = "NEW RECORD!";
+                document.getElementById('deathMsg').style.color = "#00ff00"; 
             } else {
-                document.getElementById('deathMsg').innerText = "BỊ XUYÊN THỦNG!";
-                document.getElementById('deathMsg').style.color = "#ff4444";
+                document.getElementById('deathMsg').innerText = "GAME OVER!";
+                document.getElementById('deathMsg').style.color = "#ff3333"; 
             }
+
+            avatarCtx.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
+            drawDogeSprite(avatarCtx, 32, 32);
 
             setTimeout(() => {
                 finalScoreEl.innerText = score;
                 highScoreEl.innerText = savedHighScore;
                 boardEl.style.display = 'block';
-                boardEl.style.boxShadow = `0 0 30px ${ball.color}`;
-                boardEl.style.borderColor = ball.color;
-            }, 700);
+            }, 600);
         }
 
         function update() {
-            // Cập nhật các vì sao
             stars.forEach(star => star.update());
-
             particles.forEach((p, i) => {
                 p.update();
                 if (p.life <= 0) particles.splice(i, 1);
@@ -315,10 +371,11 @@
             if (!gameStarted || isGameOver) return;
 
             spikeOffsetY = (spikeOffsetY + gameSpeed) % spikeHeight;
-
             ball.x += ball.vx;
 
-            if (ball.x - ball.radius <= spikeWidth || ball.x + ball.radius >= canvas.width - spikeWidth) {
+            let hitboxRadius = 10;
+            let deathZone = spikeWidth + wallBase - 4; 
+            if (ball.x - hitboxRadius <= deathZone || ball.x + hitboxRadius >= canvas.width - deathZone) {
                 triggerGameOver(); return;
             }
 
@@ -326,8 +383,8 @@
                 let obs = obstacles[i];
                 obs.y += gameSpeed;
 
-                if (ball.y - ball.radius < obs.y + obstacleHeight && ball.y + ball.radius > obs.y) {
-                    if (ball.x - ball.radius < obs.gapX || ball.x + ball.radius > obs.gapX + obs.gapWidth) {
+                if (ball.y - hitboxRadius < obs.y + obstacleHeight && ball.y + hitboxRadius > obs.y) {
+                    if (ball.x - hitboxRadius < obs.gapX || ball.x + hitboxRadius > obs.gapX + obs.gapWidth) {
                         triggerGameOver(); return;
                     }
                 }
@@ -336,8 +393,8 @@
                     score++;
                     scoreEl.innerText = score;
                     obs.passed = true;
-                    gameSpeed += 0.12;
-                    ball.vx += (ball.vx > 0 ? 0.1 : -0.1);
+                    gameSpeed += 0.15;
+                    ball.vx += (ball.vx > 0 ? 0.15 : -0.15);
                 }
             }
 
@@ -346,58 +403,52 @@
         }
 
         function draw() {
-            // 1. NỀN VŨ TRỤ (Màu đen sâu thẳm hơi ngả xanh tối, để lại vệt mờ motion blur)
-            ctx.fillStyle = "rgba(5, 5, 10, 0.35)";
+            ctx.fillStyle = "#000000"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1.5 VẼ CÁC VÌ SAO (Sao vẽ sau lớp nền mờ sẽ kéo thành những vệt sáng cực đẹp)
             stars.forEach(star => star.draw());
 
-            // 2. VẼ THANH CHƯỚNG NGẠI VẬT
             obstacles.forEach(obs => {
+                let snapY = Math.floor(obs.y / P_SIZE) * P_SIZE;
+                
                 ctx.fillStyle = obs.color;
-                ctx.shadowBlur = 10; ctx.shadowColor = obs.color;
-                ctx.fillRect(0, obs.y, obs.gapX, obstacleHeight);
-                ctx.fillRect(obs.gapX + obs.gapWidth, obs.y, canvas.width - (obs.gapX + obs.gapWidth), obstacleHeight);
-                ctx.shadowBlur = 0;
+                ctx.fillRect(0, snapY, obs.gapX, obstacleHeight);
+                ctx.fillRect(obs.gapX + obs.gapWidth, snapY, canvas.width - (obs.gapX + obs.gapWidth), obstacleHeight);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.fillRect(0, snapY, obs.gapX, P_SIZE);
+                ctx.fillRect(obs.gapX + obs.gapWidth, snapY, canvas.width - (obs.gapX + obs.gapWidth), P_SIZE);
+                ctx.fillRect(obs.gapX + obs.gapWidth, snapY, P_SIZE, obstacleHeight);
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, snapY + obstacleHeight - P_SIZE, obs.gapX, P_SIZE);
+                ctx.fillRect(obs.gapX + obs.gapWidth, snapY + obstacleHeight - P_SIZE, canvas.width - (obs.gapX + obs.gapWidth), P_SIZE);
+                ctx.fillRect(obs.gapX - P_SIZE, snapY, P_SIZE, obstacleHeight);
             });
 
-            // 3. VẼ 2 TƯỜNG GAI RĂNG CƯA
-            ctx.fillStyle = '#ff2222';
-            ctx.shadowBlur = 15; 
-            ctx.shadowColor = '#ff0000'; 
+            ctx.fillStyle = '#ff1111'; 
             
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            for (let y = -spikeHeight + spikeOffsetY; y < canvas.height + spikeHeight; y += spikeHeight) {
-                ctx.lineTo(spikeWidth, y + spikeHeight / 2); 
-                ctx.lineTo(0, y + spikeHeight);              
-            }
-            ctx.lineTo(0, 0);
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.moveTo(canvas.width, 0);
-            for (let y = -spikeHeight + spikeOffsetY; y < canvas.height + spikeHeight; y += spikeHeight) {
-                ctx.lineTo(canvas.width - spikeWidth, y + spikeHeight / 2); 
-                ctx.lineTo(canvas.width, y + spikeHeight);                  
-            }
-            ctx.lineTo(canvas.width, 0);
-            ctx.fill();
+            let snappedOffsetY = Math.floor(spikeOffsetY / P_SIZE) * P_SIZE;
+            let startY = Math.floor(-spikeHeight * 2 / P_SIZE) * P_SIZE;
             
-            ctx.shadowBlur = 0; 
+            for (let y = startY; y < canvas.height + spikeHeight; y += P_SIZE) {
+                let localY = (y - snappedOffsetY) % spikeHeight;
+                if (localY < 0) localY += spikeHeight;
 
-            // 4. VẼ HIỆU ỨNG NỔ
+                let phase = localY / spikeHeight; 
+                let widthScale = phase < 0.5 ? (phase * 2) : (1 - (phase - 0.5) * 2);
+                let curSpikeW = Math.floor((widthScale * spikeWidth) / P_SIZE) * P_SIZE;
+
+                ctx.fillRect(0, y, curSpikeW + wallBase, P_SIZE);
+                ctx.fillRect(canvas.width - curSpikeW - wallBase, y, curSpikeW + wallBase, P_SIZE);
+            }
+            
             particles.forEach(p => p.draw());
 
-            // 5. VẼ TRÁI BÓNG CHÍNH
             if (ball.visible) {
-                ctx.beginPath();
-                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-                ctx.fillStyle = ball.color;
-                ctx.shadowBlur = 15; ctx.shadowColor = ball.color;
-                ctx.fill();
-                ctx.shadowBlur = 0;
+                let snapX = Math.floor(ball.x / P_SIZE) * P_SIZE;
+                let snapY = Math.floor(ball.y / P_SIZE) * P_SIZE;
+                drawDogeSprite(ctx, snapX, snapY);
             }
         }
 
@@ -410,7 +461,6 @@
         function handleInput(e) {
             if (boardEl.style.display === 'block') return;
             e.preventDefault();
-            
             if (!gameStarted) {
                 gameStarted = true;
                 instructionEl.style.display = 'none'; 
@@ -423,14 +473,10 @@
 
         container.addEventListener('mousedown', handleInput);
         container.addEventListener('touchstart', handleInput, {passive: false});
-        
         btnRestart.addEventListener('click', (e) => {
             e.stopPropagation(); 
             resetGame();
         });
-
-        scoreEl.style.color = ball.color;
-        scoreEl.style.textShadow = `0 0 15px ${ball.color}`;
         
         loop(); 
     </script>

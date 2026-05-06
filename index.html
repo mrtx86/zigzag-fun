@@ -41,7 +41,6 @@
             top: 0;
         }
 
-        /* --- ANIMATION RUNG MÀN HÌNH --- */
         @keyframes shake-pos {
             0% { left: 0px; top: 0px; }
             10% { left: -10px; top: -10px; }
@@ -259,6 +258,8 @@
         const DOGE_BLACK = '#000000'; 
         
         const obstaclePalette = ['#00ff00', '#ff3333'];
+        // Mảng màu sắc pháo bông rực rỡ
+        const confettiColors = ['#00ff00', '#ff3333', '#FDCB58', '#00ffff', '#ff00ff', '#ffffff'];
 
         let isGameOver = false;
         let gameStarted = false;
@@ -268,6 +269,7 @@
         let obstacles = [];
         let stars = []; 
         let floatingTexts = []; 
+        let confettis = []; // Mảng chứa pháo bông
 
         let savedHighScore = localStorage.getItem('zigzag_crypto_ath') || 0;
         let nextSpawnDistance = 150; 
@@ -296,14 +298,13 @@
             return obstaclePalette[Math.floor(Math.random() * obstaclePalette.length)];
         }
 
-        // --- HỆ THỐNG DI CHUYỂN CÓ QUÁN TÍNH (DRIFT) ---
         const ball = {
             x: canvas.width / 2,
             y: canvas.height - 150,
             radius: 12, 
-            vx: 4,          // Vận tốc hiện tại (thực tế đang di chuyển)
-            targetVx: 4,    // Vận tốc mục tiêu (hướng người chơi muốn đến)
-            accel: 0.8,     // Gia tốc bẻ lái (Số càng nhỏ, trượt càng dài)
+            vx: 4,
+            targetVx: 4,
+            accel: 0.8,
             visible: true
         };
 
@@ -349,6 +350,38 @@
             draw() {
                 if (this.life <= 0) return;
                 ctx.fillStyle = this.life > 40 ? this.color : '#888888';
+                let snapX = Math.floor(this.x / P_SIZE) * P_SIZE;
+                let snapY = Math.floor(this.y / P_SIZE) * P_SIZE;
+                ctx.fillRect(snapX, snapY, this.size, this.size);
+            }
+        }
+
+        // --- CLASS PHÁO BÔNG GIẤY (CONFETTI) ---
+        class Confetti {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                // Random kích thước hạt pháo bông
+                this.size = P_SIZE * (Math.random() < 0.5 ? 1 : 2); 
+                this.color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+                
+                // Bắn nổ tung ra các hướng ngẫu nhiên
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 10 + 5; 
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed - 6; // Hơi thiên hướng bắn lên cao
+                
+                this.gravity = 0.4;
+                this.drag = 0.95; // Lực cản không khí
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= this.drag;
+                this.vy += this.gravity;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
                 let snapX = Math.floor(this.x / P_SIZE) * P_SIZE;
                 let snapY = Math.floor(this.y / P_SIZE) * P_SIZE;
                 ctx.fillRect(snapX, snapY, this.size, this.size);
@@ -472,11 +505,11 @@
             obstacles = [];
             particles = [];
             floatingTexts = []; 
+            confettis = []; // Dọn dẹp pháo bông cũ
             spikeOffsetY = 0;
             isGameOver = false;
             gameStarted = false; 
             
-            // Reset vận tốc
             ball.x = canvas.width / 2;
             ball.vx = 4;
             ball.targetVx = 4;
@@ -576,6 +609,11 @@
                 localStorage.setItem('zigzag_crypto_ath', savedHighScore);
                 document.getElementById('deathMsg').innerText = "NEW ATH!";
                 document.getElementById('deathMsg').style.color = "#00ff00"; 
+                
+                // BẮN PHÁO BÔNG KHI ĐẠT KỶ LỤC MỚI (NEW ATH)
+                for (let i = 0; i < 100; i++) {
+                    confettis.push(new Confetti(canvas.width / 2, canvas.height / 2));
+                }
             } else {
                 document.getElementById('deathMsg').innerText = "LIQUIDATED!";
                 document.getElementById('deathMsg').style.color = "#ff3333"; 
@@ -598,11 +636,16 @@
                 if (ft.alpha <= 0) floatingTexts.splice(i, 1);
             });
 
+            // Cập nhật vị trí của pháo bông
+            confettis.forEach((c, i) => {
+                c.update();
+                if (c.y > canvas.height) confettis.splice(i, 1); // Xóa khi rớt khỏi màn hình
+            });
+
             if (!gameStarted || isGameOver) return;
 
             spikeOffsetY = (spikeOffsetY + gameSpeed) % spikeHeight;
             
-            // TÍNH TOÁN QUÁN TÍNH (SLIDE/DRIFT)
             if (ball.vx < ball.targetVx) {
                 ball.vx += ball.accel;
                 if (ball.vx > ball.targetVx) ball.vx = ball.targetVx;
@@ -634,7 +677,6 @@
                     obs.passed = true;
                     gameSpeed += 0.15;
                     
-                    // Tăng vận tốc mục tiêu và gia tốc bám đường nhẹ nhàng
                     ball.targetVx += (ball.targetVx > 0 ? 0.15 : -0.15);
                     ball.accel += 0.01;
 
@@ -697,6 +739,9 @@
             }
 
             floatingTexts.forEach(ft => ft.draw());
+
+            // Vẽ pháo bông giấy (Chỉ gọi khi mảng có dữ liệu / Có ATH mới)
+            confettis.forEach(c => c.draw());
         }
 
         let lastTime = 0;
@@ -728,7 +773,6 @@
                 if(obstacles.length === 0) createObstacle();
             } 
             else if (!isGameOver) {
-                // CHỈNH SỬA: CHỈ ĐẢO NGƯỢC VẬN TỐC MỤC TIÊU ĐỂ TẠO HIỆU ỨNG DRIFT
                 ball.targetVx *= -1;
             }
         }

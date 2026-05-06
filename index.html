@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DEATH ZIGZAG - DOGE EDITION</title>
+    <title>DEATH ZIGZAG - DOGE CHAOS EDITION</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
@@ -57,6 +57,9 @@
             margin: 0;
             color: #ffffff;
             text-shadow: 4px 4px 0px #555; 
+            /* Thêm hiệu ứng mờ dần (fade) kéo dài 0.5 giây */
+            opacity: 1; 
+            transition: opacity 0.5s ease; 
         }
         
         #instruction {
@@ -64,10 +67,10 @@
             bottom: 55%; 
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
+            width: 100%;
             text-align: center;
             color: #ddd;
-            font-size: 14px; /* Tăng nhẹ size vì tiếng Anh ngắn gọn hơn */
+            font-size: 16px; 
             text-transform: uppercase;
             line-height: 1.6;
             z-index: 10; 
@@ -90,28 +93,39 @@
             text-align: center;
             display: none;
             z-index: 100;
-            width: 260px; 
+            width: 280px; 
             border: 6px solid #ffffff;
             box-sizing: border-box;
         }
 
+        /* AVATAR DOGE ĐÃ ĐƯỢC LÀM TRONG SUỐT VÀ X2 KÍCH THƯỚC */
         #avatarCanvas {
             display: block;
-            margin: 0 auto 15px auto;
-            width: 72px; 
-            height: 72px;
-            background: #222;
-            border: 4px solid #ffffff;
+            margin: 0 auto 10px auto;
+            width: 128px; /* Phóng to gấp đôi (bản cũ 72) */
+            height: 128px;
+            background: transparent; /* Bỏ viền xám */
+            border: none; /* Bỏ khung */
             image-rendering: pixelated;
         }
 
         #gameOverBoard h2 {
-            margin: 0 0 20px 0;
+            margin: 0 0 10px 0;
             font-size: 16px; 
             color: #ff3333; 
             text-transform: uppercase;
             line-height: 1.5;
         }
+        
+        #tauntText {
+            font-size: 8px; 
+            color: #FDCB58; 
+            margin: 0 0 15px 0;
+            text-transform: uppercase;
+            line-height: 1.6;
+            min-height: 25px;
+        }
+
         .score-info {
             font-size: 11px;
             margin: 10px 0;
@@ -126,7 +140,7 @@
             text-shadow: 2px 2px 0px #555;
         }
         #btnRestart {
-            margin-top: 25px;
+            margin-top: 20px;
             padding: 12px 20px;
             font-size: 14px;
             font-family: 'Press Start 2P', cursive; 
@@ -153,10 +167,11 @@
         <div id="ui">
             <p id="score">0</p>
         </div>
-        <div id="instruction">TAP TO<br>START</div>
+        <div id="instruction">TAP TO START</div>
         <div id="gameOverBoard">
             <canvas id="avatarCanvas" width="64" height="64"></canvas>
             <h2 id="deathMsg">GAME OVER!</h2>
+            <div id="tauntText">WOW. MUCH FAIL.</div>
             <div class="score-info">SCORE:<br><span id="finalScore" class="score-val">0</span></div>
             <div class="score-info">BEST:<br><span id="highScore" class="score-val">0</span></div>
             <button id="btnRestart">RESTART</button>
@@ -177,6 +192,7 @@
         const highScoreEl = document.getElementById('highScore');
         const btnRestart = document.getElementById('btnRestart');
         const instructionEl = document.getElementById('instruction');
+        const tauntTextEl = document.getElementById('tauntText');
 
         ctx.imageSmoothingEnabled = false;
         avatarCtx.imageSmoothingEnabled = false;
@@ -207,11 +223,30 @@
         let stars = []; 
 
         let savedHighScore = localStorage.getItem('zigzag_highscore') || 0;
+        let nextSpawnDistance = 150; 
 
         const spikeWidth = 24;  
         const spikeHeight = 48; 
         const wallBase = 8;     
         let spikeOffsetY = 0;   
+
+        const taunts = [
+            "Wow. Such fail. Very dead.",
+            "Much slow. So noob. Wow.",
+            "Skill issue detected.",
+            "Are you playing with your toes?",
+            "My grandma has better reflexes.",
+            "Tip: Don't hit the walls.",
+            "Did you even try?",
+            "Doge is highly disappointed.",
+            "Try turning your monitor on.",
+            "Error 404: Skills not found.",
+            "Please tell me you lagged.",
+            "That gap was huge, bro.",
+            "Git gud.",
+            "Maybe try a slower game?",
+            "Reflexes of a potato."
+        ];
 
         function getDistinctObstacleColor() {
             currentObstaclePaletteIndex = (currentObstaclePaletteIndex + 1) % obstaclePalette.length;
@@ -227,7 +262,6 @@
         };
 
         const obstacleHeight = 24; 
-        const gapWidthBase = 124;
 
         class Star {
             constructor() {
@@ -276,8 +310,9 @@
         }
 
         function createObstacle() {
-            let gapWidth = Math.max(68, gapWidthBase - (score * 1.5));
-            gapWidth = Math.floor(gapWidth / P_SIZE) * P_SIZE;
+            let currentMaxGap = Math.max(76, 150 - (score * 1.2)); 
+            let gapWidth = Math.floor(Math.random() * (currentMaxGap - 60 + 1)) + 60;
+            gapWidth = Math.floor(gapWidth / P_SIZE) * P_SIZE; 
             
             let safeWallDist = spikeWidth + wallBase + 20;
             let gapX = Math.random() * (canvas.width - gapWidth - safeWallDist*2) + safeWallDist;
@@ -287,6 +322,8 @@
                 y: -40, gapX: gapX, gapWidth: gapWidth, passed: false,
                 color: getDistinctObstacleColor() 
             });
+
+            nextSpawnDistance = Math.floor(Math.random() * (220 - 120 + 1)) + 120;
         }
 
         function resetGame() {
@@ -301,7 +338,10 @@
             ball.vx = 4;
             ball.visible = true;
             
+            // Kéo độ trong suốt (opacity) về 1 để hiện lại điểm một cách mượt mà
+            scoreEl.style.opacity = '1';
             scoreEl.innerText = score;
+            
             boardEl.style.display = 'none';
             instructionEl.style.display = 'none';
             
@@ -351,10 +391,16 @@
                 document.getElementById('deathMsg').style.color = "#ff3333"; 
             }
 
+            const randomTaunt = taunts[Math.floor(Math.random() * taunts.length)];
+            tauntTextEl.innerText = `"${randomTaunt}"`;
+
             avatarCtx.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
             drawDogeSprite(avatarCtx, 32, 32);
 
+            // Đợi 0.6 giây rồi mới làm mờ điểm ở background và hiện bảng kết quả
             setTimeout(() => {
+                scoreEl.style.opacity = '0'; // Kích hoạt hiệu ứng Fade Out
+                
                 finalScoreEl.innerText = score;
                 highScoreEl.innerText = savedHighScore;
                 boardEl.style.display = 'block';
@@ -399,7 +445,8 @@
             }
 
             if (obstacles.length > 0 && obstacles[0].y > canvas.height) obstacles.shift();
-            if (obstacles.length === 0 || obstacles[obstacles.length - 1].y > 220) createObstacle();
+            
+            if (obstacles.length === 0 || obstacles[obstacles.length - 1].y > nextSpawnDistance) createObstacle();
         }
 
         function draw() {
@@ -461,6 +508,7 @@
         function handleInput(e) {
             if (boardEl.style.display === 'block') return;
             e.preventDefault();
+            
             if (!gameStarted) {
                 gameStarted = true;
                 instructionEl.style.display = 'none'; 
@@ -473,6 +521,13 @@
 
         container.addEventListener('mousedown', handleInput);
         container.addEventListener('touchstart', handleInput, {passive: false});
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                handleInput(e);
+            }
+        });
+
         btnRestart.addEventListener('click', (e) => {
             e.stopPropagation(); 
             resetGame();

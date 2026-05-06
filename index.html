@@ -37,6 +37,26 @@
             border: 6px solid #ffffff;
             overflow: hidden;
             transform-origin: center center; 
+            left: 0;
+            top: 0;
+        }
+
+        /* --- ANIMATION RUNG MÀN HÌNH --- */
+        @keyframes shake-pos {
+            0% { left: 0px; top: 0px; }
+            10% { left: -10px; top: -10px; }
+            20% { left: 10px; top: 10px; }
+            30% { left: -10px; top: 10px; }
+            40% { left: 10px; top: -10px; }
+            50% { left: -5px; top: -5px; }
+            60% { left: 5px; top: 5px; }
+            70% { left: -5px; top: 5px; }
+            80% { left: 5px; top: -5px; }
+            90% { left: -2px; top: -2px; }
+            100% { left: 0px; top: 0px; }
+        }
+        .shake {
+            animation: shake-pos 0.4s cubic-bezier(.36,.07,.19,.97) both;
         }
 
         #gameCanvas {
@@ -61,7 +81,6 @@
             transition: opacity 0.5s ease; 
         }
         
-        /* CHÂN DUNG XUẤT HIỆN Ở MÀN HÌNH CHỜ - x2 Size */
         #startMockCanvas {
             position: absolute;
             bottom: 66%; 
@@ -102,16 +121,15 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: #000000;
-            padding: 20px 15px; 
+            padding: 24px 20px; 
             text-align: center;
             display: none;
             z-index: 100;
-            width: 280px; 
+            width: 340px; 
             border: 6px solid #ffffff;
             box-sizing: border-box;
         }
 
-        /* DOGE CHÍNH */
         #avatarCanvas {
             display: block;
             margin: 10px auto; 
@@ -124,41 +142,43 @@
 
         #gameOverBoard h2 {
             margin: 5px 0 5px 0;
-            font-size: 16px; 
+            font-size: 20px; 
             color: #ff3333; 
             text-transform: uppercase;
             line-height: 1.5;
         }
         
         #tauntText {
-            font-size: 8px; 
+            font-size: 10px; 
             color: #FDCB58; 
-            margin: 0 0 10px 0;
+            margin: 0 0 15px 0;
             text-transform: uppercase;
             line-height: 1.6;
             min-height: 25px;
         }
 
         .score-info {
-            font-size: 11px;
-            margin: 5px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px; 
+            font-size: 14px; 
+            margin: 12px 0;
             color: #aaaaaa;
-            line-height: 1.5;
         }
         .score-val {
-            font-size: 20px; 
-            display: block;
+            font-size: 24px; 
             color: #ffffff;
-            margin-top: 8px;
             text-shadow: 2px 2px 0px #555;
+            display: inline-block; 
         }
         #finalScore { color: #00ff00; }
         #highScore { color: #FDCB58; }
 
         #btnRestart {
-            margin-top: 20px;
-            padding: 12px 20px;
-            font-size: 14px;
+            margin-top: 25px;
+            padding: 14px 24px; 
+            font-size: 16px; 
             font-family: 'Press Start 2P', cursive; 
             background: #ffffff;
             color: #000000;
@@ -192,8 +212,9 @@
             
             <h2 id="deathMsg">LIQUIDATED!</h2>
             <div id="tauntText">WOW. MUCH REKT.</div>
-            <div class="score-info">PNL:<br><span id="finalScore" class="score-val">$0</span></div>
-            <div class="score-info">ATH:<br><span id="highScore" class="score-val">$0</span></div>
+            
+            <div class="score-info">PNL: <span id="finalScore" class="score-val">$0</span></div>
+            <div class="score-info">ATH: <span id="highScore" class="score-val">$0</span></div>
             
             <button id="btnRestart">BUY THE DIP</button>
         </div>
@@ -230,7 +251,6 @@
         resizeGame();
         window.addEventListener('resize', resizeGame);
 
-        // x2 Kích thước drawing unit cho mặt người
         const P_SIZE_UI = 4; 
         const P_SIZE = 4; 
 
@@ -266,18 +286,24 @@
             "Say goodbye to your house, anon.",
             "Paper hands detected.",
             "Buy high, sell low like a pro.",
-            "FOMO is a disease."
+            "FOMO is a disease.",
+            "If you can't hold you won't be rich.",
+            "Doge to the moon!",
+            "Buy now or cry later."
         ];
 
         function getDistinctObstacleColor() {
             return obstaclePalette[Math.floor(Math.random() * obstaclePalette.length)];
         }
 
+        // --- HỆ THỐNG DI CHUYỂN CÓ QUÁN TÍNH (DRIFT) ---
         const ball = {
             x: canvas.width / 2,
             y: canvas.height - 150,
             radius: 12, 
-            vx: 4,
+            vx: 4,          // Vận tốc hiện tại (thực tế đang di chuyển)
+            targetVx: 4,    // Vận tốc mục tiêu (hướng người chơi muốn đến)
+            accel: 0.8,     // Gia tốc bẻ lái (Số càng nhỏ, trượt càng dài)
             visible: true
         };
 
@@ -346,7 +372,7 @@
                 ctx.save();
                 ctx.globalAlpha = Math.max(0, this.alpha);
                 ctx.fillStyle = '#00ff00'; 
-                ctx.font = '12px "Press Start 2P", cursive';
+                ctx.font = '24px "Press Start 2P", cursive';
                 ctx.textAlign = 'center';
                 ctx.shadowColor = '#000000';
                 ctx.shadowBlur = 0;
@@ -357,28 +383,21 @@
             }
         }
 
-        // --- CÁC HÀM VẼ PIXEL ART CHÂN DUNG CỔ ĐIỂN ---
-
-        // Trump: Profile view (nhìn ngang)
         function drawTrumpSprite(curCtx, x, y) {
-            // Khối da nghiêng (Orange)
             curCtx.fillStyle = '#F4A261';
             curCtx.fillRect(x - 4*P_SIZE_UI, y - 4*P_SIZE_UI, 9*P_SIZE_UI, 9*P_SIZE_UI); 
             curCtx.fillRect(x - 5*P_SIZE_UI, y, P_SIZE_UI, 4*P_SIZE_UI);
 
-            // Tóc vàng bồng bềnh
             curCtx.fillStyle = '#E9C46A';
             curCtx.fillRect(x - 6*P_SIZE_UI, y - 6*P_SIZE_UI, 12*P_SIZE_UI, 3*P_SIZE_UI); 
             curCtx.fillRect(x + 2*P_SIZE_UI, y - 7*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
             curCtx.fillRect(x - 4*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
 
-            // Chi tiết mặt nghiêng
             curCtx.fillStyle = '#000000';
-            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); // Mắt
-            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI); // Miệng
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI); 
         }
 
-        // Musk: Frontal view
         function drawElonSprite(curCtx, x, y) {
             curCtx.fillStyle = '#E0AC69';
             curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
@@ -395,7 +414,6 @@
             curCtx.fillRect(x - 2*P_SIZE_UI, y + 2*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
         }
 
-        // CZ: Frontal view
         function drawCZSprite(curCtx, x, y) {
             curCtx.fillStyle = '#DDBE96';
             curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
@@ -457,8 +475,12 @@
             spikeOffsetY = 0;
             isGameOver = false;
             gameStarted = false; 
+            
+            // Reset vận tốc
             ball.x = canvas.width / 2;
             ball.vx = 4;
+            ball.targetVx = 4;
+            ball.accel = 0.8;
             ball.visible = true;
             
             scoreEl.style.opacity = '1';
@@ -528,6 +550,11 @@
             isGameOver = true;
             ball.visible = false;
             
+            container.classList.add('shake');
+            setTimeout(() => {
+                container.classList.remove('shake');
+            }, 400); 
+            
             setTimeout(() => {
                 avatarCtx.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
                 
@@ -574,6 +601,15 @@
             if (!gameStarted || isGameOver) return;
 
             spikeOffsetY = (spikeOffsetY + gameSpeed) % spikeHeight;
+            
+            // TÍNH TOÁN QUÁN TÍNH (SLIDE/DRIFT)
+            if (ball.vx < ball.targetVx) {
+                ball.vx += ball.accel;
+                if (ball.vx > ball.targetVx) ball.vx = ball.targetVx;
+            } else if (ball.vx > ball.targetVx) {
+                ball.vx -= ball.accel;
+                if (ball.vx < ball.targetVx) ball.vx = ball.targetVx;
+            }
             ball.x += ball.vx;
 
             let hitboxRadius = 10;
@@ -597,9 +633,12 @@
                     scoreEl.innerText = "$" + score;
                     obs.passed = true;
                     gameSpeed += 0.15;
-                    ball.vx += (ball.vx > 0 ? 0.15 : -0.15);
+                    
+                    // Tăng vận tốc mục tiêu và gia tốc bám đường nhẹ nhàng
+                    ball.targetVx += (ball.targetVx > 0 ? 0.15 : -0.15);
+                    ball.accel += 0.01;
 
-                    floatingTexts.push(new FloatingText(ball.x, ball.y - 20, "+$1"));
+                    floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
                 }
             }
 
@@ -660,10 +699,22 @@
             floatingTexts.forEach(ft => ft.draw());
         }
 
-        function loop() {
-            update();
-            draw(); 
+        let lastTime = 0;
+        const FPS = 60;
+        const frameInterval = 1000 / FPS; 
+
+        function loop(timestamp) {
             requestAnimationFrame(loop);
+
+            if (!lastTime) lastTime = timestamp;
+            let deltaTime = timestamp - lastTime;
+
+            if (deltaTime >= frameInterval) {
+                lastTime = timestamp - (deltaTime % frameInterval);
+                
+                update();
+                draw(); 
+            }
         }
 
         function handleInput(e) {
@@ -677,7 +728,8 @@
                 if(obstacles.length === 0) createObstacle();
             } 
             else if (!isGameOver) {
-                ball.vx *= -1;
+                // CHỈNH SỬA: CHỈ ĐẢO NGƯỢC VẬN TỐC MỤC TIÊU ĐỂ TẠO HIỆU ỨNG DRIFT
+                ball.targetVx *= -1;
             }
         }
 
@@ -696,7 +748,7 @@
         });
         
         setRandomStartFace();
-        loop(); 
+        requestAnimationFrame(loop); 
     </script>
 </body>
 </html>

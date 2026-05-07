@@ -279,10 +279,7 @@
         let isGameOver = false;
         let gameStarted = false;
         let score = 0;
-        
-        // ĐÃ GIẢM TỐC ĐỘ BAN ĐẦU (từ 3.5 xuống 2.8)
         let gameSpeed = 2.8; 
-        
         let particles = [];
         let obstacles = [];
         let stars = []; 
@@ -530,7 +527,6 @@
         function createObstacle() {
             let difficultyFactor = score * 1.5; 
             
-            // ĐÃ MỞ RỘNG KHE HỞ BAN ĐẦU ĐỂ DỄ CHƠI HƠN
             let currentMaxGap = Math.max(80, 150 - difficultyFactor); 
             let currentMinGap = Math.max(60, 110 - difficultyFactor); 
             
@@ -551,7 +547,6 @@
 
         function resetGame() {
             score = 0;
-            // GIẢM TỐC ĐỘ BAN ĐẦU KHI RESET
             gameSpeed = 2.8; 
             
             obstacles = [];
@@ -705,22 +700,8 @@
 
             if (!gameStarted || isGameOver) return;
 
-            if (!ufo.active && score >= 5 && Math.random() < 0.002) { 
-                ufo.active = true;
-                ufo.t = 0;
-                
-                let startLeft = Math.random() < 0.5;
-                ufo.startX = startLeft ? -40 : canvas.width + 40;
-                ufo.endX = startLeft ? canvas.width + 40 : -40;
-                
-                ufo.startY = Math.random() * 100 + 50;
-                ufo.endY = Math.random() * 100 + 50;
-                ufo.cpX = canvas.width / 2;
-                ufo.cpY = ball.y + 150; 
-                
-                ufo.speed = 0.005 + (score * 0.0001); 
-                if (ufo.speed > 0.015) ufo.speed = 0.015;
-            }
+            // ĐÃ THAY ĐỔI: UFO SẼ CÓ 50% TỈ LỆ XUẤT HIỆN Ở CÁC MỐC 5, 10, 15, 20...
+            // Logic này được chuyển xuống phần cộng điểm bên dưới
 
             if (ufo.active) {
                 ufo.t += ufo.speed;
@@ -773,12 +754,31 @@
                     scoreEl.innerText = "$" + score;
                     obs.passed = true;
                     
-                    // ĐÃ GIẢM GIA TỐC TĂNG ĐỘ KHÓ 
-                    gameSpeed += 0.1; // Cũ là 0.15
-                    ball.targetVx += (ball.targetVx > 0 ? 0.1 : -0.1); // Cũ là 0.15
+                    gameSpeed += 0.1; 
+                    ball.targetVx += (ball.targetVx > 0 ? 0.1 : -0.1); 
                     ball.accel += 0.01;
 
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
+
+                    // --- LOGIC XUẤT HIỆN ĐĨA BAY MỚI (CHỈ XÉT KHI VỪA CỘNG ĐIỂM) ---
+                    if (score > 0 && score % 5 === 0) { // Cứ mỗi mốc 5 điểm
+                        if (!ufo.active && Math.random() < 0.5) { // 50% tỉ lệ ra
+                            ufo.active = true;
+                            ufo.t = 0;
+                            
+                            let startLeft = Math.random() < 0.5;
+                            ufo.startX = startLeft ? -40 : canvas.width + 40;
+                            ufo.endX = startLeft ? canvas.width + 40 : -40;
+                            
+                            ufo.startY = Math.random() * 100 + 50;
+                            ufo.endY = Math.random() * 100 + 50;
+                            ufo.cpX = canvas.width / 2;
+                            ufo.cpY = ball.y + 150; 
+                            
+                            ufo.speed = 0.005 + (score * 0.0001); 
+                            if (ufo.speed > 0.015) ufo.speed = 0.015;
+                        }
+                    }
                 }
             }
 

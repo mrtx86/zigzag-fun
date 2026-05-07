@@ -332,7 +332,7 @@
             cpX: 0, cpY: 0, 
             endX: 0, endY: 0,
             t: 0,           
-            speed: 0.005
+            speed: 0.008
         };
 
         const obstacleHeight = 24; 
@@ -700,9 +700,6 @@
 
             if (!gameStarted || isGameOver) return;
 
-            // ĐÃ THAY ĐỔI: UFO SẼ CÓ 50% TỈ LỆ XUẤT HIỆN Ở CÁC MỐC 5, 10, 15, 20...
-            // Logic này được chuyển xuống phần cộng điểm bên dưới
-
             if (ufo.active) {
                 ufo.t += ufo.speed;
                 if (ufo.t >= 1) {
@@ -760,23 +757,28 @@
 
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
 
-                    // --- LOGIC XUẤT HIỆN ĐĨA BAY MỚI (CHỈ XÉT KHI VỪA CỘNG ĐIỂM) ---
-                    if (score > 0 && score % 5 === 0) { // Cứ mỗi mốc 5 điểm
+                    // --- LOGIC XUẤT HIỆN ĐĨA BAY MỚI (XUẤT HIỆN SỚM 1 NHỊP - ĐIỂM 4, 9, 14...) ---
+                    if (score > 0 && (score + 1) % 5 === 0) { 
                         if (!ufo.active && Math.random() < 0.5) { // 50% tỉ lệ ra
                             ufo.active = true;
                             ufo.t = 0;
                             
                             let startLeft = Math.random() < 0.5;
-                            ufo.startX = startLeft ? -40 : canvas.width + 40;
-                            ufo.endX = startLeft ? canvas.width + 40 : -40;
+                            // Đẩy ra xa viền 1 chút để bay mượt vào
+                            ufo.startX = startLeft ? -60 : canvas.width + 60;
+                            ufo.endX = startLeft ? canvas.width + 60 : -60;
                             
-                            ufo.startY = Math.random() * 100 + 50;
-                            ufo.endY = Math.random() * 100 + 50;
+                            // Hạ độ cao bay bắt đầu cho thấp gần người chơi
+                            ufo.startY = ball.y - 200 - Math.random() * 50;
+                            ufo.endY = ball.y - 200 - Math.random() * 50;
+                            
+                            // Võng sâu thẳng vào vị trí chiều cao hiện tại của Doge
                             ufo.cpX = canvas.width / 2;
-                            ufo.cpY = ball.y + 150; 
+                            ufo.cpY = ball.y + 60; 
                             
-                            ufo.speed = 0.005 + (score * 0.0001); 
-                            if (ufo.speed > 0.015) ufo.speed = 0.015;
+                            // Tăng mạnh tốc độ bay của UFO để uy hiếp hơn
+                            ufo.speed = 0.008 + (score * 0.0002); 
+                            if (ufo.speed > 0.02) ufo.speed = 0.02;
                         }
                     }
                 }

@@ -279,7 +279,10 @@
         let isGameOver = false;
         let gameStarted = false;
         let score = 0;
-        let gameSpeed = 3.5; 
+        
+        // ĐÃ GIẢM TỐC ĐỘ BAN ĐẦU (từ 3.5 xuống 2.8)
+        let gameSpeed = 2.8; 
+        
         let particles = [];
         let obstacles = [];
         let stars = []; 
@@ -307,8 +310,8 @@
             "If you can't hold you won't be rich.",
             "Doge to the moon!",
             "Buy now or cry later.",
-            "Abducted by market manipulators.", // Câu khịa mới cho UFO
-            "Aliens dumped on you."             // Câu khịa mới cho UFO
+            "Abducted by market manipulators.", 
+            "Aliens dumped on you."             
         ];
 
         function getDistinctObstacleColor() {
@@ -325,14 +328,13 @@
             visible: true
         };
 
-        // --- HỆ THỐNG ĐĨA BAY (UFO) ---
         const ufo = {
             active: false,
             x: 0, y: 0,
             startX: 0, startY: 0,
-            cpX: 0, cpY: 0, // Điểm điều khiển (Control Point) cho đường vòng cung
+            cpX: 0, cpY: 0, 
             endX: 0, endY: 0,
-            t: 0,           // Tiến trình bay (0 -> 1)
+            t: 0,           
             speed: 0.005
         };
 
@@ -504,19 +506,16 @@
         }
 
         function drawUFO(curCtx, x, y) {
-            // Mái vòm thuỷ tinh (Cyan)
             curCtx.fillStyle = '#00ffff';
             curCtx.fillRect(x - 2*P_SIZE, y - 3*P_SIZE, 4*P_SIZE, 2*P_SIZE);
             curCtx.fillStyle = '#ffffff'; 
             curCtx.fillRect(x - 1*P_SIZE, y - 3*P_SIZE, P_SIZE, P_SIZE);
 
-            // Thân dĩa bay (Grey)
             curCtx.fillStyle = '#9e9e9e';
             curCtx.fillRect(x - 4*P_SIZE, y - P_SIZE, 8*P_SIZE, P_SIZE);
             curCtx.fillRect(x - 6*P_SIZE, y, 12*P_SIZE, P_SIZE);
             curCtx.fillRect(x - 4*P_SIZE, y + P_SIZE, 8*P_SIZE, P_SIZE);
 
-            // Đèn nhấp nháy
             let time = Date.now();
             curCtx.fillStyle = (time % 400 < 200) ? '#ff3333' : '#00ff00';
             curCtx.fillRect(x - 5*P_SIZE, y, P_SIZE, P_SIZE);
@@ -524,7 +523,6 @@
             curCtx.fillStyle = (time % 400 > 200) ? '#ff3333' : '#00ff00';
             curCtx.fillRect(x + 4*P_SIZE, y, P_SIZE, P_SIZE);
             
-            // Lực đẩy phản lực bên dưới
             curCtx.fillStyle = '#ffff00';
             curCtx.fillRect(x - 1*P_SIZE, y + 2*P_SIZE, 2*P_SIZE, P_SIZE);
         }
@@ -532,8 +530,9 @@
         function createObstacle() {
             let difficultyFactor = score * 1.5; 
             
-            let currentMaxGap = Math.max(80, 110 - difficultyFactor);
-            let currentMinGap = Math.max(60, 90 - difficultyFactor);
+            // ĐÃ MỞ RỘNG KHE HỞ BAN ĐẦU ĐỂ DỄ CHƠI HƠN
+            let currentMaxGap = Math.max(80, 150 - difficultyFactor); 
+            let currentMinGap = Math.max(60, 110 - difficultyFactor); 
             
             let gapWidth = Math.floor(Math.random() * (currentMaxGap - currentMinGap + 1)) + currentMinGap;
             gapWidth = Math.floor(gapWidth / P_SIZE) * P_SIZE; 
@@ -552,7 +551,9 @@
 
         function resetGame() {
             score = 0;
-            gameSpeed = 3.5;
+            // GIẢM TỐC ĐỘ BAN ĐẦU KHI RESET
+            gameSpeed = 2.8; 
+            
             obstacles = [];
             particles = [];
             floatingTexts = []; 
@@ -560,7 +561,7 @@
             spikeOffsetY = 0;
             isGameOver = false;
             gameStarted = false; 
-            ufo.active = false; // Reset đĩa bay
+            ufo.active = false; 
             
             ball.x = canvas.width / 2;
             ball.vx = 4;
@@ -704,23 +705,20 @@
 
             if (!gameStarted || isGameOver) return;
 
-            // XỬ LÝ ĐĨA BAY (UFO)
-            if (!ufo.active && score >= 5 && Math.random() < 0.002) { // Tỉ lệ xuất hiện ngẫu nhiên
+            if (!ufo.active && score >= 5 && Math.random() < 0.002) { 
                 ufo.active = true;
                 ufo.t = 0;
                 
-                // Random xuất hiện từ trái qua phải hoặc ngược lại
                 let startLeft = Math.random() < 0.5;
                 ufo.startX = startLeft ? -40 : canvas.width + 40;
                 ufo.endX = startLeft ? canvas.width + 40 : -40;
                 
-                // Bay vòng cung võng xuống
                 ufo.startY = Math.random() * 100 + 50;
                 ufo.endY = Math.random() * 100 + 50;
                 ufo.cpX = canvas.width / 2;
-                ufo.cpY = ball.y + 150; // Võng sâu về phía người chơi
+                ufo.cpY = ball.y + 150; 
                 
-                ufo.speed = 0.005 + (score * 0.0001); // Càng điểm cao lướt càng nhanh
+                ufo.speed = 0.005 + (score * 0.0001); 
                 if (ufo.speed > 0.015) ufo.speed = 0.015;
             }
 
@@ -729,16 +727,14 @@
                 if (ufo.t >= 1) {
                     ufo.active = false;
                 } else {
-                    // Cập nhật toạ độ bay theo đường Bezier bậc 2
                     let u = 1 - ufo.t;
                     ufo.x = u * u * ufo.startX + 2 * u * ufo.t * ufo.cpX + ufo.t * ufo.t * ufo.endX;
                     ufo.y = u * u * ufo.startY + 2 * u * ufo.t * ufo.cpY + ufo.t * ufo.t * ufo.endY;
 
-                    // Kiểm tra va chạm với UFO
                     let dx = ball.x - ufo.x;
                     let dy = ball.y - ufo.y;
                     let distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < 10 + 12) { // hitbox của Doge + UFO
+                    if (distance < 10 + 12) { 
                         triggerGameOver(); 
                         return;
                     }
@@ -776,9 +772,10 @@
                     score += 1; 
                     scoreEl.innerText = "$" + score;
                     obs.passed = true;
-                    gameSpeed += 0.15;
                     
-                    ball.targetVx += (ball.targetVx > 0 ? 0.15 : -0.15);
+                    // ĐÃ GIẢM GIA TỐC TĂNG ĐỘ KHÓ 
+                    gameSpeed += 0.1; // Cũ là 0.15
+                    ball.targetVx += (ball.targetVx > 0 ? 0.1 : -0.1); // Cũ là 0.15
                     ball.accel += 0.01;
 
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
@@ -839,7 +836,6 @@
                 drawDogeSprite(ctx, snapX, snapY, gameStarted && !isGameOver);
             }
 
-            // Vẽ đĩa bay nếu nó đang xuất hiện
             if (ufo.active) {
                 let snapX = Math.floor(ufo.x / P_SIZE) * P_SIZE;
                 let snapY = Math.floor(ufo.y / P_SIZE) * P_SIZE;

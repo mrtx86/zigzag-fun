@@ -76,7 +76,6 @@
             display: block;
         }
 
-        /* --- NÚT BẬT TẮT ÂM THANH --- */
         #audioToggle {
             position: absolute;
             top: 15px;
@@ -86,7 +85,7 @@
             z-index: 200;
             user-select: none;
             opacity: 0.8;
-            pointer-events: auto; /* Cho phép bấm */
+            pointer-events: auto; 
         }
         #audioToggle:active { transform: scale(0.9); }
 
@@ -262,16 +261,14 @@
 
         const audioToggleBtn = document.getElementById('audioToggle');
 
-        // Toggle Âm thanh
         audioToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Không trigger jump
+            e.stopPropagation(); 
             isMuted = !isMuted;
             audioToggleBtn.innerText = isMuted ? "🔇" : "🔊";
             if(isMuted) stopBGM();
             else if(gameStarted && !isGameOver) startBGM();
         });
 
-        // Khởi tạo Audio Context (Phải gọi sau khi user tương tác)
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -281,7 +278,6 @@
             }
         }
 
-        // Hàm phát tần số cơ bản
         function playTone(freq, type, duration, vol=0.1, freqEnd=null) {
             if (isMuted || !audioCtx) return;
             let osc = audioCtx.createOscillator();
@@ -303,7 +299,7 @@
             osc.stop(audioCtx.currentTime + duration);
         }
 
-        // Các hiệu ứng SFX
+        // --- CÁC SFX HIỆN TẠI ---
         function playClickSFX() {
             playTone(400, 'square', 0.08, 0.03, 600);
         }
@@ -318,7 +314,24 @@
             setTimeout(() => playTone(150, 'sawtooth', 0.6, 0.1, 20), 200);
         }
 
-        // Nhạc nền (Bassline 8-bit)
+        // --- SFX MỚI BỔ SUNG ---
+        function playUfoSFX() {
+            if (isMuted || !audioCtx) return;
+            // Tiếng cảnh báo réo lên rồi hạ xuống rợn người
+            playTone(800, 'sine', 0.4, 0.05, 1400);
+            setTimeout(() => playTone(1400, 'sine', 0.4, 0.05, 800), 400);
+        }
+
+        function playAthSFX() {
+            if (isMuted || !audioCtx) return;
+            // Tiếng kèn chiến thắng (Tèn-tén-ten-ténnnn)
+            setTimeout(() => playTone(523.25, 'square', 0.1, 0.05), 0);     // C5
+            setTimeout(() => playTone(659.25, 'square', 0.1, 0.05), 100);   // E5
+            setTimeout(() => playTone(783.99, 'square', 0.1, 0.05), 200);   // G5
+            setTimeout(() => playTone(1046.50, 'square', 0.4, 0.05), 300);  // C6 ngân dài
+        }
+
+        // --- NHẠC NỀN ---
         const bgmNotes = [130.81, 130.81, 155.56, 174.61, 196.00, 196.00, 174.61, 155.56];
         let bgmIndex = 0;
 
@@ -330,7 +343,7 @@
                     playTone(bgmNotes[bgmIndex], 'triangle', 0.15, 0.03);
                     bgmIndex = (bgmIndex + 1) % bgmNotes.length;
                 }
-            }, 180); // Nhịp độ 180ms
+            }, 180); 
         }
 
         function stopBGM() {
@@ -437,7 +450,7 @@
             cpX: 0, cpY: 0, 
             endX: 0, endY: 0,
             t: 0,           
-            speed: 0.005
+            speed: 0.008
         };
 
         const obstacleHeight = 24; 
@@ -677,7 +690,6 @@
             startMockCanvas.style.display = 'block';
             setRandomStartFace();
             
-            // Tắt BGM nếu đang reset
             stopBGM();
         }
 
@@ -747,9 +759,7 @@
             isGameOver = true;
             ball.visible = false;
             
-            // SFX & BGM Logic
             stopBGM();
-            playGameOverSFX();
             
             container.classList.add('shake');
             setTimeout(() => {
@@ -779,9 +789,17 @@
                 for (let i = 0; i < 100; i++) {
                     confettis.push(new Confetti(canvas.width / 2, canvas.height / 2));
                 }
+                
+                // MỚI: ÂM THANH KHI ĐẠT ATH MỚI VÀ BẮN PHÁO BÔNG
+                playGameOverSFX(); // Tiếng rớt nến
+                setTimeout(() => playAthSFX(), 300); // Kèm theo kèn chiến thắng
+                
             } else {
                 document.getElementById('deathMsg').innerText = "LIQUIDATED!";
                 document.getElementById('deathMsg').style.color = "#ff3333"; 
+                
+                // Bình thường thì chỉ kêu tiếng sập nguồn
+                playGameOverSFX();
             }
 
             const randomTaunt = taunts[Math.floor(Math.random() * taunts.length)];
@@ -863,7 +881,6 @@
                     ball.targetVx += (ball.targetVx > 0 ? 0.1 : -0.1); 
                     ball.accel += 0.01;
 
-                    // SFX Ăn điểm
                     playScoreSFX();
 
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
@@ -872,6 +889,9 @@
                         if (!ufo.active && Math.random() < 0.5) { 
                             ufo.active = true;
                             ufo.t = 0;
+                            
+                            // BẮT ĐẦU PHÁT ÂM THANH CẢNH BÁO ĐĨA BAY (UFO SIREN)
+                            playUfoSFX();
                             
                             let startLeft = Math.random() < 0.5;
                             ufo.startX = startLeft ? -60 : canvas.width + 60;
@@ -975,11 +995,10 @@
         }
 
         function handleInput(e) {
-            if (e.target.id === 'audioToggle') return; // Không bắt sự kiện nếu click vào nút Mute
+            if (e.target.id === 'audioToggle') return; 
             if (boardEl.style.display === 'block') return;
             e.preventDefault();
             
-            // Cấp quyền phát âm thanh cho trình duyệt
             initAudio();
             
             if (!gameStarted) {
@@ -988,7 +1007,7 @@
                 startMockCanvas.style.display = 'none'; 
                 scoreEl.style.opacity = '1'; 
                 
-                startBGM(); // Khởi chạy nhạc nền
+                startBGM(); 
                 playClickSFX();
                 
                 if(obstacles.length === 0) createObstacle();
@@ -1010,7 +1029,7 @@
 
         btnRestart.addEventListener('click', (e) => {
             e.stopPropagation(); 
-            playClickSFX(); // Tiếng click khi bấm nút
+            playClickSFX(); 
             resetGame();
         });
         

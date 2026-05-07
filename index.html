@@ -55,7 +55,6 @@
             top: 0;
         }
 
-        /* --- ANIMATION RUNG MÀN HÌNH --- */
         @keyframes shake-pos {
             0% { left: 0px; top: 0px; }
             10% { left: -10px; top: -10px; }
@@ -76,6 +75,20 @@
         #gameCanvas {
             display: block;
         }
+
+        /* --- NÚT BẬT TẮT ÂM THANH --- */
+        #audioToggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 200;
+            user-select: none;
+            opacity: 0.8;
+            pointer-events: auto; /* Cho phép bấm */
+        }
+        #audioToggle:active { transform: scale(0.9); }
 
         #ui {
             position: absolute;
@@ -215,6 +228,8 @@
 <body>
 
     <div id="gameContainer">
+        <div id="audioToggle">🔊</div>
+        
         <div id="ui">
             <p id="score">$0</p>
         </div>
@@ -237,6 +252,96 @@
     </div>
 
     <script>
+        // ==========================================
+        // 1. HỆ THỐNG ÂM THANH (WEB AUDIO API SYNTH)
+        // ==========================================
+        let audioCtx = null;
+        let isMuted = false;
+        let bgmInterval = null;
+        let isBgmPlaying = false;
+
+        const audioToggleBtn = document.getElementById('audioToggle');
+
+        // Toggle Âm thanh
+        audioToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Không trigger jump
+            isMuted = !isMuted;
+            audioToggleBtn.innerText = isMuted ? "🔇" : "🔊";
+            if(isMuted) stopBGM();
+            else if(gameStarted && !isGameOver) startBGM();
+        });
+
+        // Khởi tạo Audio Context (Phải gọi sau khi user tương tác)
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Hàm phát tần số cơ bản
+        function playTone(freq, type, duration, vol=0.1, freqEnd=null) {
+            if (isMuted || !audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            if (freqEnd) {
+                osc.frequency.exponentialRampToValueAtTime(freqEnd, audioCtx.currentTime + duration);
+            }
+            
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Các hiệu ứng SFX
+        function playClickSFX() {
+            playTone(400, 'square', 0.08, 0.03, 600);
+        }
+        
+        function playScoreSFX() {
+            playTone(800, 'square', 0.1, 0.05);
+            setTimeout(() => playTone(1200, 'square', 0.15, 0.05), 100);
+        }
+
+        function playGameOverSFX() {
+            playTone(200, 'sawtooth', 0.4, 0.1, 50);
+            setTimeout(() => playTone(150, 'sawtooth', 0.6, 0.1, 20), 200);
+        }
+
+        // Nhạc nền (Bassline 8-bit)
+        const bgmNotes = [130.81, 130.81, 155.56, 174.61, 196.00, 196.00, 174.61, 155.56];
+        let bgmIndex = 0;
+
+        function startBGM() {
+            if (isMuted || isBgmPlaying) return;
+            isBgmPlaying = true;
+            bgmInterval = setInterval(() => {
+                if(!isMuted) {
+                    playTone(bgmNotes[bgmIndex], 'triangle', 0.15, 0.03);
+                    bgmIndex = (bgmIndex + 1) % bgmNotes.length;
+                }
+            }, 180); // Nhịp độ 180ms
+        }
+
+        function stopBGM() {
+            isBgmPlaying = false;
+            clearInterval(bgmInterval);
+        }
+
+
+        // ==========================================
+        // 2. LOGIC GAME CHÍNH
+        // ==========================================
         const container = document.getElementById('gameContainer');
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -332,7 +437,7 @@
             cpX: 0, cpY: 0, 
             endX: 0, endY: 0,
             t: 0,           
-            speed: 0.008
+            speed: 0.005
         };
 
         const obstacleHeight = 24; 
@@ -571,6 +676,9 @@
             instructionEl.style.display = 'block';
             startMockCanvas.style.display = 'block';
             setRandomStartFace();
+            
+            // Tắt BGM nếu đang reset
+            stopBGM();
         }
 
         function drawDogeSprite(curCtx, x, y, isFlying = false) {
@@ -600,11 +708,9 @@
 
             if (isFlying) {
                 let flicker = Math.random();
-                
                 curCtx.fillStyle = '#ff5500'; 
                 curCtx.fillRect(x - 4, y + 12, 8, 4);
                 curCtx.fillRect(x - 2, y + 16, 4, flicker > 0.5 ? 4 : 8);
-                
                 curCtx.fillStyle = '#ffff00'; 
                 curCtx.fillRect(x - 2, y + 12, 4, 4);
             }
@@ -641,6 +747,10 @@
             isGameOver = true;
             ball.visible = false;
             
+            // SFX & BGM Logic
+            stopBGM();
+            playGameOverSFX();
+            
             container.classList.add('shake');
             setTimeout(() => {
                 container.classList.remove('shake');
@@ -648,13 +758,11 @@
             
             setTimeout(() => {
                 avatarCtx.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
-                
                 drawPixelatedChart(avatarCtx, 64, 64, 0.25); 
                 avatarCtx.globalAlpha = 1;
                 drawDogeSprite(avatarCtx, 32, 32, false); 
 
                 scoreEl.style.opacity = '0'; 
-                
                 finalScoreEl.innerText = "$" + score;
                 highScoreEl.innerText = "$" + savedHighScore;
                 boardEl.style.display = 'block';
@@ -755,28 +863,24 @@
                     ball.targetVx += (ball.targetVx > 0 ? 0.1 : -0.1); 
                     ball.accel += 0.01;
 
+                    // SFX Ăn điểm
+                    playScoreSFX();
+
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
 
-                    // --- LOGIC XUẤT HIỆN ĐĨA BAY MỚI (XUẤT HIỆN SỚM 1 NHỊP - ĐIỂM 4, 9, 14...) ---
                     if (score > 0 && (score + 1) % 5 === 0) { 
-                        if (!ufo.active && Math.random() < 0.5) { // 50% tỉ lệ ra
+                        if (!ufo.active && Math.random() < 0.5) { 
                             ufo.active = true;
                             ufo.t = 0;
                             
                             let startLeft = Math.random() < 0.5;
-                            // Đẩy ra xa viền 1 chút để bay mượt vào
                             ufo.startX = startLeft ? -60 : canvas.width + 60;
                             ufo.endX = startLeft ? canvas.width + 60 : -60;
-                            
-                            // Hạ độ cao bay bắt đầu cho thấp gần người chơi
                             ufo.startY = ball.y - 200 - Math.random() * 50;
                             ufo.endY = ball.y - 200 - Math.random() * 50;
-                            
-                            // Võng sâu thẳng vào vị trí chiều cao hiện tại của Doge
                             ufo.cpX = canvas.width / 2;
                             ufo.cpY = ball.y + 60; 
                             
-                            // Tăng mạnh tốc độ bay của UFO để uy hiếp hơn
                             ufo.speed = 0.008 + (score * 0.0002); 
                             if (ufo.speed > 0.02) ufo.speed = 0.02;
                         }
@@ -871,8 +975,12 @@
         }
 
         function handleInput(e) {
+            if (e.target.id === 'audioToggle') return; // Không bắt sự kiện nếu click vào nút Mute
             if (boardEl.style.display === 'block') return;
             e.preventDefault();
+            
+            // Cấp quyền phát âm thanh cho trình duyệt
+            initAudio();
             
             if (!gameStarted) {
                 gameStarted = true;
@@ -880,10 +988,14 @@
                 startMockCanvas.style.display = 'none'; 
                 scoreEl.style.opacity = '1'; 
                 
+                startBGM(); // Khởi chạy nhạc nền
+                playClickSFX();
+                
                 if(obstacles.length === 0) createObstacle();
             } 
             else if (!isGameOver) {
                 ball.targetVx *= -1;
+                playClickSFX();
             }
         }
 
@@ -898,6 +1010,7 @@
 
         btnRestart.addEventListener('click', (e) => {
             e.stopPropagation(); 
+            playClickSFX(); // Tiếng click khi bấm nút
             resetGame();
         });
         

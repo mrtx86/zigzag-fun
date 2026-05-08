@@ -254,7 +254,7 @@
         // ==========================================
         // 0. CẤU HÌNH MÔI TRƯỜNG (ENVIRONMENT CONFIG)
         // ==========================================
-        const ENV = 'prod'; // Đổi thành  'test'-'prod' khi publish
+        const ENV = 'prod'; // Đổi thành 'prod' khi publish
 
         const CONFIG = {
             test: {
@@ -402,7 +402,6 @@
         let items = [];
         let bullTimer = 0;
         let fudTimer = 0;
-        
         let graceTimer = 0;
 
         let savedHighScore = localStorage.getItem('zigzag_crypto_ath') || 0;
@@ -554,16 +553,13 @@
             constructor(x, y, type) {
                 this.x = x; 
                 this.y = y; 
-                this.type = type; // '🎁' hoặc '👾'
+                this.type = type; 
                 this.markedForDeletion = false;
                 this.floatY = 0;
 
                 this.direction = Math.random() < 0.5 ? 1 : -1;
                 this.speed = this.type === '🎁' ? 1.5 : 2.5; 
-                
-                // FIX: Cho biên độ con Alien đi ngang rộng hơn (80 -> 180)
                 this.range = 180; 
-                
                 this.minX = this.x - this.range / 2;
                 this.maxX = this.x + this.range / 2;
             }
@@ -582,12 +578,9 @@
 
                 if (this.y > canvas.height + 50) this.markedForDeletion = true;
 
-                let dogeL = ball.x - 12, dogeR = ball.x + 12;
-                let dogeT = ball.y - 16, dogeB = ball.y + 8;
-                
+                let dogeL = ball.x - 12, dogeR = ball.x + 12, dogeT = ball.y - 16, dogeB = ball.y + 8;
                 let py = this.y + Math.sin(this.floatY) * 6;
-                let itemL = this.x - 16, itemR = this.x + 16;
-                let itemT = py - 14, itemB = py + 16;
+                let itemL = this.x - 16, itemR = this.x + 16, itemT = py - 14, itemB = py + 16;
 
                 if (dogeR > itemL && dogeL < itemR && dogeB > itemT && dogeT < itemB) {
                     this.markedForDeletion = true;
@@ -595,12 +588,12 @@
                         bullTimer = 180; 
                         playBullSFX();
                         floatingTexts.push(new FloatingText(this.x, this.y, "🎁 GIFT RUN!", "#00ffff"));
-                    } else { // Alien FUD
+                    } else { 
                         if (bullTimer > 0) {
                             floatingTexts.push(new FloatingText(this.x, this.y, "IMMUNE!", "#aaaaaa"));
                             for(let k=0; k<10; k++) particles.push(new Particle(this.x, this.y, '#32CD32'));
                         } else {
-                            fudTimer = 120; // 2 giây
+                            fudTimer = 120; 
                             playFudSFX();
                             floatingTexts.push(new FloatingText(this.x, this.y, "👾 ALIEN FUD!", "#ff3333"));
                         }
@@ -899,31 +892,40 @@
         }
 
         function update() {
-            let currentSpeed = gameSpeed;
+            let timeScale = 1.0;
             let isInvincible = false;
 
+            // --- 1. TÍNH TOÁN TRẠNG THÁI HIỆN TẠI ---
             if (bullTimer > 0) {
                 bullTimer--;
                 isInvincible = true;
-                currentSpeed *= 1.5; 
+                timeScale = 1.5; // Tăng tốc độ game 50%
+                
                 if (bullTimer % 4 === 0) particles.push(new Particle(ball.x, ball.y, '#ff0000')); 
                 
+                // AUTOPILOT TRONG 1 GIÂY CUỐI (Tự tìm khe hở)
                 if (bullTimer < 60) {
                     let nextObs = obstacles.find(o => !o.passed);
                     if (nextObs) {
                         let targetCenter = nextObs.gapX + (nextObs.gapWidth / 2);
-                        if (ball.x < targetCenter - 10) ball.targetVx = Math.abs(ball.targetVx);
-                        else if (ball.x > targetCenter + 10) ball.targetVx = -Math.abs(ball.targetVx);
-                        else ball.targetVx = 0; // Đi thẳng
+                        let baseSpeed = 4 + score * 0.1;
+                        if (ball.x < targetCenter - 8) ball.targetVx = baseSpeed;
+                        else if (ball.x > targetCenter + 8) ball.targetVx = -baseSpeed;
+                        else ball.targetVx = 0; // Đạt tới trung tâm -> Ngừng bẻ lái ngang
                     }
                 }
 
-                if (bullTimer === 0) graceTimer = 60; // 1 Giây
+                if (bullTimer === 0) graceTimer = 60; // Hết Bull Run -> Bật Làm chậm 1 giây
                 
             } else if (graceTimer > 0) {
                 graceTimer--;
                 isInvincible = true; 
-                currentSpeed *= 0.5; 
+                timeScale = 0.5; // Làm chậm game 50%
+                
+                // Vừa thoát Slow-mo, tự khơi động lại hướng di chuyển nếu targetVx đang là 0
+                if (graceTimer === 0 && ball.targetVx === 0) {
+                    ball.targetVx = Math.random() < 0.5 ? (4 + score * 0.1) : -(4 + score * 0.1);
+                }
             }
 
             if (fudTimer > 0) {
@@ -934,7 +936,9 @@
                 }
             }
 
-            // --- CẬP NHẬT HIỆU ỨNG HÌNH ẢNH ---
+            let currentSpeed = gameSpeed * timeScale;
+
+            // --- 2. CẬP NHẬT HIỆU ỨNG (LUÔN CHẠY) ---
             stars.forEach(star => star.update(currentSpeed));
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
@@ -951,6 +955,7 @@
 
             if (!gameStarted || isGameOver) return;
 
+            // --- 3. CẬP NHẬT ENTITIES KHÁC ---
             for (let i = items.length - 1; i >= 0; i--) {
                 items[i].update(currentSpeed);
                 if (items[i].markedForDeletion) items.splice(i, 1);
@@ -958,7 +963,8 @@
 
             for (let i = ufos.length - 1; i >= 0; i--) {
                 let u = ufos[i];
-                u.t += u.speed * (currentSpeed / gameSpeed); 
+                u.t += u.speed * timeScale; 
+                
                 if (u.t >= 1) {
                     ufos.splice(i, 1); 
                 } else if (u.t >= 0) { 
@@ -971,8 +977,7 @@
                     
                     if (dogeR > ufoL && dogeL < ufoR && dogeB > ufoT && dogeT < ufoB) {
                         if (!isInvincible) {
-                            triggerGameOver(); 
-                            return;
+                            triggerGameOver(); return;
                         } else {
                             for(let k=0; k<15; k++) particles.push(new Particle(u.x, u.y, '#00ffff'));
                             ufos.splice(i, 1);
@@ -983,7 +988,9 @@
 
             spikeOffsetY = (spikeOffsetY + currentSpeed) % spikeHeight;
             
+            // --- 4. TÍNH TOÁN VẬT LÝ VÀ HÃM PHANH (DECELERATION) ---
             if (ball.targetVx !== 0) {
+                // Tăng tốc dần đều về targetVx
                 if (ball.vx < ball.targetVx) {
                     ball.vx += ball.accel;
                     if (ball.vx > ball.targetVx) ball.vx = ball.targetVx;
@@ -992,24 +999,36 @@
                     if (ball.vx < ball.targetVx) ball.vx = ball.targetVx;
                 }
             } else {
-                ball.vx = 0; 
+                // ĐÃ FIX: Hãm phanh mượt mà khi targetVx = 0 (Lúc Autopilot vào tâm)
+                if (ball.vx > 0) {
+                    ball.vx -= ball.accel;
+                    if (ball.vx < 0) ball.vx = 0;
+                } else if (ball.vx < 0) {
+                    ball.vx += ball.accel;
+                    if (ball.vx > 0) ball.vx = 0;
+                }
             }
             
-            ball.x += ball.vx;
+            // ĐÃ FIX: Áp dụng timeScale cho chiều ngang để khớp với bullet-time
+            ball.x += ball.vx * timeScale;
 
+            // KIỂM TRA VA CHẠM TƯỜNG BẰNG AABB MỚI
             let hitboxRadius = 10;
             let deathZone = spikeWidth + wallBase - 4; 
             if (ball.x - hitboxRadius <= deathZone || ball.x + hitboxRadius >= canvas.width - deathZone) {
                 if (!isInvincible) {
                     triggerGameOver(); return;
                 } else {
+                    let baseSpeed = 4 + score * 0.1;
                     if (ball.x - hitboxRadius <= deathZone) { 
                         ball.x = deathZone + hitboxRadius; 
-                        if(ball.targetVx !== 0) ball.targetVx = Math.abs(ball.targetVx);
+                        ball.targetVx = baseSpeed; 
+                        ball.vx = ball.targetVx; 
                     }
                     if (ball.x + hitboxRadius >= canvas.width - deathZone) { 
                         ball.x = canvas.width - deathZone - hitboxRadius; 
-                        if(ball.targetVx !== 0) ball.targetVx = -Math.abs(ball.targetVx);
+                        ball.targetVx = -baseSpeed; 
+                        ball.vx = ball.targetVx; 
                     }
                 }
             }
@@ -1032,12 +1051,12 @@
                     obs.passed = true;
                     
                     gameSpeed += 0.1; 
+                    let baseSpeed = 4 + score * 0.1;
+                    
                     if(ball.targetVx !== 0) {
-                        ball.targetVx += (ball.targetVx > 0 ? 0.1 : -0.1); 
-                    } else {
-                        ball.targetVx = Math.random() < 0.5 ? 4 + score * 0.1 : -4 - score * 0.1;
-                    }
-                    ball.accel += 0.01;
+                        ball.targetVx = ball.targetVx > 0 ? baseSpeed : -baseSpeed;
+                    } 
+                    if (ball.accel < 1.5) ball.accel += 0.01;
 
                     playScoreSFX();
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
@@ -1193,8 +1212,14 @@
                 if(obstacles.length === 0) createObstacle();
             } 
             else if (!isGameOver) {
-                if(ball.targetVx === 0) ball.targetVx = ball.vx > 0 ? -4 - score*0.1 : 4 + score*0.1;
-                else ball.targetVx *= -1;
+                let baseSpeed = 4 + score * 0.1;
+                // Nếu đang rớt tự do (targetVx = 0) do Autopilot căn giữa, 
+                // click sẽ khôi phục hướng dựa trên hướng đang trôi, hoặc ngẫu nhiên
+                if (ball.targetVx === 0) {
+                    ball.targetVx = ball.vx > 0 ? -baseSpeed : baseSpeed;
+                } else {
+                    ball.targetVx = ball.targetVx > 0 ? -baseSpeed : baseSpeed;
+                }
                 
                 playClickSFX();
             }

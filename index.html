@@ -403,6 +403,9 @@
         let bullTimer = 0;
         let fudTimer = 0;
         let graceTimer = 0;
+        
+        // ĐÃ THÊM: Biến quản lý tốc độ mượt (Lerp)
+        let timeScale = 1.0; 
 
         let savedHighScore = localStorage.getItem('zigzag_crypto_ath') || 0;
         let nextSpawnDistance = 150; 
@@ -741,6 +744,7 @@
         function resetGame() {
             score = 0;
             gameSpeed = 2.8; 
+            timeScale = 1.0; // ĐÃ FIX: Reset lại timeScale
             
             obstacles = [];
             particles = [];
@@ -853,6 +857,7 @@
             bullTimer = 0;
             fudTimer = 0; 
             graceTimer = 0;
+            timeScale = 1.0;
             
             stopBGM();
             container.classList.add('shake');
@@ -892,18 +897,17 @@
         }
 
         function update() {
-            let timeScale = 1.0;
+            let targetTimeScale = 1.0;
             let isInvincible = false;
 
-            // --- 1. TÍNH TOÁN TRẠNG THÁI HIỆN TẠI ---
+            // --- 1. TÍNH TOÁN TRẠNG THÁI HIỆN TẠI VÀ CHỈNH MỤC TIÊU LERP ---
             if (bullTimer > 0) {
                 bullTimer--;
                 isInvincible = true;
-                timeScale = 1.5; // Tăng tốc độ game 50%
-                
+                targetTimeScale = 1.5; 
                 if (bullTimer % 4 === 0) particles.push(new Particle(ball.x, ball.y, '#ff0000')); 
                 
-                // AUTOPILOT TRONG 1 GIÂY CUỐI (Tự tìm khe hở)
+                // AUTOPILOT
                 if (bullTimer < 60) {
                     let nextObs = obstacles.find(o => !o.passed);
                     if (nextObs) {
@@ -911,20 +915,24 @@
                         let baseSpeed = 4 + score * 0.1;
                         if (ball.x < targetCenter - 8) ball.targetVx = baseSpeed;
                         else if (ball.x > targetCenter + 8) ball.targetVx = -baseSpeed;
-                        else ball.targetVx = 0; // Đạt tới trung tâm -> Ngừng bẻ lái ngang
+                        else ball.targetVx = 0; 
                     }
                 }
 
-                if (bullTimer === 0) graceTimer = 60; // Hết Bull Run -> Bật Làm chậm 1 giây
+                if (bullTimer === 0) {
+                    graceTimer = 60; // Sang làm chậm
+                    ball.vx = 0;     // ĐÃ FIX: Rũ bỏ hoàn toàn đà trượt ngang
+                    ball.targetVx = 0; 
+                }
                 
             } else if (graceTimer > 0) {
                 graceTimer--;
                 isInvincible = true; 
-                timeScale = 0.5; // Làm chậm game 50%
+                targetTimeScale = 0.4; // Mục tiêu chạy chậm
                 
-                // Vừa thoát Slow-mo, tự khơi động lại hướng di chuyển nếu targetVx đang là 0
                 if (graceTimer === 0 && ball.targetVx === 0) {
-                    ball.targetVx = Math.random() < 0.5 ? (4 + score * 0.1) : -(4 + score * 0.1);
+                    let baseSpeed = 4 + score * 0.1;
+                    ball.targetVx = Math.random() < 0.5 ? baseSpeed : -baseSpeed;
                 }
             }
 
@@ -936,9 +944,18 @@
                 }
             }
 
+            // ĐÃ FIX: LERP TIMESCALE CHO MƯỢT
+            if (timeScale < targetTimeScale) {
+                timeScale += 0.015; // Tăng dần tốc độ từ từ
+                if (timeScale > targetTimeScale) timeScale = targetTimeScale;
+            } else if (timeScale > targetTimeScale) {
+                timeScale -= 0.1; // Thắng gấp khi vô slow-mo
+                if (timeScale < targetTimeScale) timeScale = targetTimeScale;
+            }
+
             let currentSpeed = gameSpeed * timeScale;
 
-            // --- 2. CẬP NHẬT HIỆU ỨNG (LUÔN CHẠY) ---
+            // --- 2. CẬP NHẬT HIỆU ỨNG VÀ MÔI TRƯỜNG ---
             stars.forEach(star => star.update(currentSpeed));
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
@@ -955,7 +972,7 @@
 
             if (!gameStarted || isGameOver) return;
 
-            // --- 3. CẬP NHẬT ENTITIES KHÁC ---
+            // --- 3. CẬP NHẬT THỰC THỂ KHÁC ---
             for (let i = items.length - 1; i >= 0; i--) {
                 items[i].update(currentSpeed);
                 if (items[i].markedForDeletion) items.splice(i, 1);
@@ -988,9 +1005,8 @@
 
             spikeOffsetY = (spikeOffsetY + currentSpeed) % spikeHeight;
             
-            // --- 4. TÍNH TOÁN VẬT LÝ VÀ HÃM PHANH (DECELERATION) ---
+            // --- 4. TÍNH TOÁN VẬT LÝ NGANG ---
             if (ball.targetVx !== 0) {
-                // Tăng tốc dần đều về targetVx
                 if (ball.vx < ball.targetVx) {
                     ball.vx += ball.accel;
                     if (ball.vx > ball.targetVx) ball.vx = ball.targetVx;
@@ -999,7 +1015,7 @@
                     if (ball.vx < ball.targetVx) ball.vx = ball.targetVx;
                 }
             } else {
-                // ĐÃ FIX: Hãm phanh mượt mà khi targetVx = 0 (Lúc Autopilot vào tâm)
+                // ĐÃ FIX: Hãm phanh ngang mượt mà khi targetVx = 0
                 if (ball.vx > 0) {
                     ball.vx -= ball.accel;
                     if (ball.vx < 0) ball.vx = 0;
@@ -1009,10 +1025,9 @@
                 }
             }
             
-            // ĐÃ FIX: Áp dụng timeScale cho chiều ngang để khớp với bullet-time
+            // ĐÃ FIX: Áp dụng timeScale cho bước chạy ngang để khớp Bullet-time
             ball.x += ball.vx * timeScale;
 
-            // KIỂM TRA VA CHẠM TƯỜNG BẰNG AABB MỚI
             let hitboxRadius = 10;
             let deathZone = spikeWidth + wallBase - 4; 
             if (ball.x - hitboxRadius <= deathZone || ball.x + hitboxRadius >= canvas.width - deathZone) {
@@ -1213,8 +1228,6 @@
             } 
             else if (!isGameOver) {
                 let baseSpeed = 4 + score * 0.1;
-                // Nếu đang rớt tự do (targetVx = 0) do Autopilot căn giữa, 
-                // click sẽ khôi phục hướng dựa trên hướng đang trôi, hoặc ngẫu nhiên
                 if (ball.targetVx === 0) {
                     ball.targetVx = ball.vx > 0 ? -baseSpeed : baseSpeed;
                 } else {

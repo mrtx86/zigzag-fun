@@ -11,13 +11,6 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #0b0e11; 
-            background-image: 
-                linear-gradient(rgba(0, 255, 0, 0.08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 0, 0.08) 1px, transparent 1px);
-            background-size: 40px 40px;
-            animation: gridMove 10s linear infinite;
-            
             color: #fff;
             font-family: 'Press Start 2P', cursive; 
             overflow: hidden;
@@ -28,9 +21,47 @@
             height: 100vh; 
         }
 
+        /* --- HỆ THỐNG CHUYỂN CẢNH (PHASES) TRÊN BODY --- */
+        body.phase0 {
+            background-color: #0b0e11; 
+            background-image: 
+                linear-gradient(rgba(0, 255, 0, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.08) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridMove 10s linear infinite;
+        }
+
+        body.phase1 {
+            background-color: #001233; 
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridMove 4s linear infinite; 
+        }
+
+        /* ĐÃ FIX: Chỉ rung màn hình khi chưa Game Over */
+        body.phase1:not(.game-over) #gameCanvas {
+            animation: canvasShake 0.4s infinite; 
+        }
+
+        body.phase2, body.phase3 {
+            background-color: #000000; 
+            background-image: none;
+            animation: none;
+        }
+
         @keyframes gridMove {
             0% { background-position: 0 0; }
             100% { background-position: 0 40px; }
+        }
+
+        @keyframes canvasShake {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(1px, -1px); }
+            50% { transform: translate(-1px, 1px); }
+            75% { transform: translate(-1px, -1px); }
+            100% { transform: translate(1px, 1px); }
         }
 
         canvas, #gameContainer {
@@ -69,7 +100,7 @@
             100% { left: 0px; top: 0px; }
         }
         .shake {
-            animation: shake-pos 0.4s cubic-bezier(.36,.07,.19,.97) both;
+            animation: shake-pos 0.4s cubic-bezier(.36,.07,.19,.97) both !important;
         }
 
         #gameCanvas {
@@ -224,7 +255,7 @@
         }
     </style>
 </head>
-<body>
+<body class="phase0">
 
     <div id="gameContainer">
         <div id="audioToggle">🔊</div>
@@ -254,24 +285,35 @@
         // ==========================================
         // 0. CẤU HÌNH MÔI TRƯỜNG (ENVIRONMENT CONFIG)
         // ==========================================
-        const ENV = 'prod'; // Đổi thành 'prod' khi publish
+        const ENV = 'prod'; // Đổi thành 'test' để test nhanh các tính năng
 
         const CONFIG = {
             test: {
                 itemMinScore: 0,        
                 itemSpawnChance: 1.0,   
                 ufoMinScore: 2,         
-                ufoSpawnChance: 1.0     
+                ufoSpawnChance: 1.0,
+                dynObsMinScore: 2,      
+                dynObsChance: 1.0,      
+                phase1: 3,              
+                phase2: 6,              
+                phase3: 9               
             },
             prod: {
                 itemMinScore: 2,        
                 itemSpawnChance: 0.15,  
                 ufoMinScore: 4,         
-                ufoSpawnChance: 0.5     
+                ufoSpawnChance: 0.5,     
+                dynObsMinScore: 15,     
+                dynObsChance: 0.4,      
+                phase1: 15,
+                phase2: 30,
+                phase3: 50 
             }
         };
 
         const CFG = CONFIG[ENV];
+        let currentPhase = 0; 
 
         // ==========================================
         // 1. HỆ THỐNG ÂM THANH
@@ -327,26 +369,31 @@
         function playUfoSFX() { if (isMuted || !audioCtx) return; playTone(800, 'sine', 0.4, 0.05, 1400); setTimeout(() => playTone(1400, 'sine', 0.4, 0.05, 800), 400); }
         function playAthSFX() { if (isMuted || !audioCtx) return; setTimeout(() => playTone(523.25, 'square', 0.1, 0.05), 0); setTimeout(() => playTone(659.25, 'square', 0.1, 0.05), 100); setTimeout(() => playTone(783.99, 'square', 0.1, 0.05), 200); setTimeout(() => playTone(1046.50, 'square', 0.4, 0.05), 300); }
         function playFudSFX() { if (isMuted || !audioCtx) return; playTone(300, 'sawtooth', 0.1, 0.05, 150); setTimeout(() => playTone(150, 'sawtooth', 0.2, 0.05, 50), 100); }
-        
-        // ÂM THANH MỚI: ALIEN XUẤT HIỆN
-        function playAlienSpawnSFX() {
-            if (isMuted || !audioCtx) return;
-            playTone(1500, 'square', 0.1, 0.03, 1000);
-            setTimeout(() => playTone(1800, 'square', 0.1, 0.03, 1200), 100);
-        }
+        function playAlienSpawnSFX() { if (isMuted || !audioCtx) return; playTone(1500, 'square', 0.1, 0.03, 1000); setTimeout(() => playTone(1800, 'square', 0.1, 0.03, 1200), 100); }
 
-        const bgmNotes = [130.81, 130.81, 155.56, 174.61, 196.00, 196.00, 174.61, 155.56];
+        const bgmNotesNormal = [130.81, 130.81, 155.56, 174.61, 196.00, 196.00, 174.61, 155.56];
+        const bgmNotesEpic = [261.63, 392.00, 329.63, 523.25, 392.00, 587.33, 523.25, 783.99]; 
         let bgmIndex = 0;
 
         function startBGM() {
             if (isMuted || isBgmPlaying) return;
             isBgmPlaying = true;
-            bgmInterval = setInterval(() => {
-                if(!isMuted) {
-                    playTone(bgmNotes[bgmIndex], 'triangle', 0.15, 0.03);
-                    bgmIndex = (bgmIndex + 1) % bgmNotes.length;
-                }
-            }, 180); 
+            
+            if (currentPhase >= 3) {
+                bgmInterval = setInterval(() => {
+                    if(!isMuted) {
+                        playTone(bgmNotesEpic[bgmIndex], 'sawtooth', 0.25, 0.05);
+                        bgmIndex = (bgmIndex + 1) % bgmNotesEpic.length;
+                    }
+                }, 250); 
+            } else {
+                bgmInterval = setInterval(() => {
+                    if(!isMuted) {
+                        playTone(bgmNotesNormal[bgmIndex], 'triangle', 0.15, 0.03);
+                        bgmIndex = (bgmIndex + 1) % bgmNotesNormal.length;
+                    }
+                }, 180); 
+            }
         }
 
         function stopBGM() {
@@ -399,7 +446,7 @@
         let isGameOver = false;
         let gameStarted = false;
         let score = 0;
-        let gameSpeed = 2.8; 
+        let gameSpeed = 2.2; 
         let particles = [];
         let obstacles = [];
         let stars = []; 
@@ -443,20 +490,22 @@
             x: canvas.width / 2,
             y: canvas.height - 150,
             radius: 12, 
-            vx: 4,
-            targetVx: 4,
-            accel: 0.8,
+            vx: 3.5,
+            targetVx: 3.5,
+            accel: 0.6, 
             visible: true
         };
 
         const obstacleHeight = 24; 
 
         class Star {
-            constructor() {
+            constructor(isFast = false) {
                 this.x = Math.floor(Math.random() * canvas.width);
                 this.y = Math.floor(Math.random() * canvas.height);
                 this.size = (Math.random() < 0.3 ? 2 : 1) * P_SIZE; 
                 this.speed = (Math.random() * 1.5) + 0.5; 
+                this.isFast = isFast; 
+                this.blinkTick = Math.random() * Math.PI * 2;
             }
             update(currentSpeed) {
                 this.y += this.speed + (currentSpeed * 0.3);
@@ -464,16 +513,19 @@
                     this.y = -this.size;
                     this.x = Math.floor(Math.random() * canvas.width);
                 }
+                this.blinkTick += this.isFast ? 0.2 : 0.05;
             }
             draw() {
+                let alpha = this.isFast ? (Math.sin(this.blinkTick) * 0.5 + 0.5) : 1;
+                ctx.save();
+                ctx.globalAlpha = alpha;
                 ctx.fillStyle = '#ffffff';
                 let snapY = Math.floor(this.y / P_SIZE) * P_SIZE;
                 let snapX = Math.floor(this.x / P_SIZE) * P_SIZE;
                 ctx.fillRect(snapX, snapY, this.size, this.size);
+                ctx.restore();
             }
         }
-
-        for(let i = 0; i < 40; i++) stars.push(new Star());
 
         class Particle {
             constructor(x, y, color) {
@@ -563,8 +615,8 @@
                 this.floatY = 0;
 
                 this.direction = Math.random() < 0.5 ? 1 : -1;
-                this.speed = 2.5; 
-                this.range = 180; 
+                this.speed = 2.0; 
+                this.range = 160; 
                 this.minX = this.x - this.range / 2;
                 this.maxX = this.x + this.range / 2;
             }
@@ -589,7 +641,7 @@
 
                 if (dogeR > itemL && dogeL < itemR && dogeB > itemT && dogeT < itemB) {
                     this.markedForDeletion = true;
-                    fudTimer = 120; 
+                    fudTimer = 90; 
                     playFudSFX();
                     floatingTexts.push(new FloatingText(this.x, this.y, "👾 ALIEN FUD!", "#ff3333"));
                 }
@@ -682,18 +734,54 @@
             curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
         }
 
+        function drawPepeProfile(curCtx, x, y) {
+            curCtx.fillStyle = '#556B2F'; 
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 3*P_SIZE_UI, 10*P_SIZE_UI, 9*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 4*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x - 6*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 4*P_SIZE_UI); 
+            
+            curCtx.fillStyle = '#ffffff'; 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 3*P_SIZE_UI, 3*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillStyle = '#000000'; 
+            curCtx.fillRect(x + 2*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, P_SIZE_UI); 
+            
+            curCtx.fillStyle = '#ff6666'; 
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 4*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillStyle = '#000000'; 
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 3*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI); 
+            
+            curCtx.fillStyle = '#ADD8E6'; 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
+        }
+
+        function drawTrollProfile(curCtx, x, y) {
+            curCtx.fillStyle = '#ffffff'; 
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI); 
+            
+            curCtx.fillStyle = '#000000'; 
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 2*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x - 1*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+            
+            curCtx.fillStyle = '#000000'; 
+            curCtx.fillRect(x - 1*P_SIZE_UI, y + 2*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillStyle = '#ffffff'; 
+            curCtx.fillRect(x + 0*P_SIZE_UI, y + 3*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
+            
+            curCtx.fillStyle = '#000000'; 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
+        }
+
         function setRandomStartFace() {
             startMockCtx.clearRect(0, 0, startMockCanvas.width, startMockCanvas.height);
-            const randomMockChoice = Math.floor(Math.random() * 4); 
-            if (randomMockChoice === 0) {
-                drawVitalikProfile(startMockCtx, 32, 32);
-            } else if (randomMockChoice === 1) {
-                drawElonProfile(startMockCtx, 32, 32);
-            } else if (randomMockChoice === 2) {
-                drawCZProfile(startMockCtx, 32, 32);
-            } else {
-                drawTrumpProfile(startMockCtx, 32, 32);
-            }
+            const randomMockChoice = Math.floor(Math.random() * 6); 
+            if (randomMockChoice === 0) drawVitalikProfile(startMockCtx, 32, 32);
+            else if (randomMockChoice === 1) drawElonProfile(startMockCtx, 32, 32);
+            else if (randomMockChoice === 2) drawCZProfile(startMockCtx, 32, 32);
+            else if (randomMockChoice === 3) drawTrumpProfile(startMockCtx, 32, 32);
+            else if (randomMockChoice === 4) drawPepeProfile(startMockCtx, 32, 32);
+            else drawTrollProfile(startMockCtx, 32, 32);
         }
 
         function drawUFO(curCtx, x, y) {
@@ -717,9 +805,10 @@
         }
 
         function createObstacle() {
-            let difficultyFactor = score * 1.5; 
-            let currentMaxGap = Math.max(80, 150 - difficultyFactor); 
-            let currentMinGap = Math.max(60, 110 - difficultyFactor); 
+            let difficultyFactor = score * 1.0; 
+            
+            let currentMaxGap = Math.max(90, 160 - difficultyFactor); 
+            let currentMinGap = Math.max(70, 120 - difficultyFactor); 
             
             let gapWidth = Math.floor(Math.random() * (currentMaxGap - currentMinGap + 1)) + currentMinGap;
             gapWidth = Math.floor(gapWidth / P_SIZE) * P_SIZE; 
@@ -728,13 +817,31 @@
             let gapX = Math.random() * (canvas.width - gapWidth - safeWallDist*2) + safeWallDist;
             gapX = Math.floor(gapX / P_SIZE) * P_SIZE;
 
+            let isDynamic = score >= CFG.dynObsMinScore && Math.random() < CFG.dynObsChance;
+            
+            if (obstacles.length > 0 && obstacles[obstacles.length - 1].isDynamic) {
+                isDynamic = false;
+            }
+
+            let amp = 0;
+            if (isDynamic) {
+                let maxLeft = gapX - safeWallDist;
+                let maxRight = (canvas.width - safeWallDist) - (gapX + gapWidth);
+                amp = Math.floor(Math.min(Math.min(maxLeft, maxRight), 50) / P_SIZE) * P_SIZE; 
+                if (amp < 16) isDynamic = false; 
+            }
+
             obstacles.push({
                 y: -40, gapX: gapX, gapWidth: gapWidth, passed: false,
-                color: getDistinctObstacleColor() 
+                color: getDistinctObstacleColor(),
+                isDynamic: isDynamic,
+                baseX: gapX,
+                amp: amp,
+                oscTick: Math.random() * Math.PI * 2,
+                oscSpeed: 0.02 + Math.random() * 0.03
             });
 
             let futureScore = score + obstacles.length; 
-            
             let isSafeZone = false;
             if (futureScore >= CFG.ufoMinScore - 1) { 
                 let mod = futureScore % 5;
@@ -746,15 +853,18 @@
             if (!isSafeZone && items.length === 0 && futureScore >= CFG.itemMinScore && Math.random() < CFG.itemSpawnChance) {
                 let spawnX = 50 + Math.random() * (canvas.width - 100);
                 items.push(new Item(spawnX, -100)); 
-                playAlienSpawnSFX(); // PHÁT ÂM THANH KHI ALIEN XUẤT HIỆN
+                playAlienSpawnSFX(); 
             }
 
-            nextSpawnDistance = Math.floor(Math.random() * (220 - 120 + 1)) + 120;
+            nextSpawnDistance = Math.floor(Math.random() * (240 - 140 + 1)) + 140; 
         }
 
         function resetGame() {
             score = 0;
-            gameSpeed = 2.8; 
+            gameSpeed = 2.2; 
+            currentPhase = 0;
+            
+            document.body.className = 'phase0'; // Implicitly removes game-over class
             
             obstacles = [];
             particles = [];
@@ -763,6 +873,10 @@
             ufos = []; 
             items = []; 
             
+            // ĐÃ FIX LỖI MẤT SAO: Luôn tạo lại 40 ngôi sao khi reset game
+            stars = []; 
+            for(let i = 0; i < 40; i++) stars.push(new Star());
+            
             fudTimer = 0;
 
             spikeOffsetY = 0;
@@ -770,9 +884,9 @@
             gameStarted = false; 
             
             ball.x = canvas.width / 2;
-            ball.vx = 4;
-            ball.targetVx = 4;
-            ball.accel = 0.8;
+            ball.vx = 3.5;
+            ball.targetVx = 3.5;
+            ball.accel = 0.6;
             ball.visible = true;
             
             scoreEl.style.opacity = '0';
@@ -852,6 +966,9 @@
             
             fudTimer = 0; 
             
+            // ĐÃ FIX: Thêm class game-over để khoá hiệu ứng rung hình nền của Phase 1
+            document.body.classList.add('game-over'); 
+            
             stopBGM();
             container.classList.add('shake');
             setTimeout(() => { container.classList.remove('shake'); }, 400); 
@@ -889,6 +1006,35 @@
             tauntTextEl.innerText = `"${randomTaunt}"`;
         }
 
+        function checkPhases() {
+            let changed = false;
+            if (score >= CFG.phase3 && currentPhase < 3) {
+                currentPhase = 3; changed = true;
+            } else if (score >= CFG.phase2 && currentPhase < 2) {
+                currentPhase = 2; changed = true;
+            } else if (score >= CFG.phase1 && currentPhase < 1) {
+                currentPhase = 1; changed = true;
+            }
+
+            if (changed) {
+                document.body.className = 'phase' + currentPhase;
+                
+                if (currentPhase === 1) {
+                    floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "LEAVING ATMOSPHERE", "#00ffff"));
+                }
+                if (currentPhase === 2) {
+                    for(let i = 0; i < 60; i++) stars.push(new Star(true)); 
+                    floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "ENTERING SPACE", "#ff00ff"));
+                }
+                if (currentPhase === 3) {
+                    stopBGM();
+                    bgmIndex = 0;
+                    startBGM(); 
+                    floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "TO THE MOON!", "#FDCB58"));
+                }
+            }
+        }
+
         function update() {
             let currentSpeed = gameSpeed;
 
@@ -900,7 +1046,6 @@
                 }
             }
 
-            // --- 1. CẬP NHẬT HIỆU ỨNG VÀ MÔI TRƯỜNG ---
             stars.forEach(star => star.update(currentSpeed));
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
@@ -917,7 +1062,6 @@
 
             if (!gameStarted || isGameOver) return;
 
-            // --- 2. CẬP NHẬT THỰC THỂ KHÁC ---
             for (let i = items.length - 1; i >= 0; i--) {
                 items[i].update(currentSpeed);
                 if (items[i].markedForDeletion) items.splice(i, 1);
@@ -945,7 +1089,6 @@
 
             spikeOffsetY = (spikeOffsetY + currentSpeed) % spikeHeight;
             
-            // --- 3. TÍNH TOÁN VẬT LÝ NGANG ---
             if (ball.vx < ball.targetVx) {
                 ball.vx += ball.accel;
                 if (ball.vx > ball.targetVx) ball.vx = ball.targetVx;
@@ -965,6 +1108,11 @@
                 let obs = obstacles[i];
                 obs.y += currentSpeed;
 
+                if (obs.isDynamic) {
+                    obs.oscTick += currentSpeed * obs.oscSpeed;
+                    obs.gapX = obs.baseX + Math.sin(obs.oscTick) * obs.amp;
+                }
+
                 if (ball.y - hitboxRadius < obs.y + obstacleHeight && ball.y + hitboxRadius > obs.y) {
                     if (ball.x - hitboxRadius < obs.gapX || ball.x + hitboxRadius > obs.gapX + obs.gapWidth) {
                         triggerGameOver(); return;
@@ -976,14 +1124,15 @@
                     scoreEl.innerText = "$" + score;
                     obs.passed = true;
                     
-                    gameSpeed += 0.1; 
-                    let baseSpeed = 4 + score * 0.1;
+                    gameSpeed += 0.06; 
+                    let baseSpeed = 3.5 + score * 0.08; 
                     ball.targetVx = ball.targetVx > 0 ? baseSpeed : -baseSpeed;
-                    if (ball.accel < 1.5) ball.accel += 0.01;
 
                     playScoreSFX();
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
 
+                    checkPhases(); 
+                    
                     if (score >= CFG.ufoMinScore && (score + 1) % 5 === 0) { 
                         if (ufos.length === 0 && items.length === 0 && Math.random() < CFG.ufoSpawnChance) { 
                             playUfoSFX();
@@ -1018,6 +1167,20 @@
         function draw() {
             ctx.fillStyle = "#000000"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (currentPhase >= 3) {
+                ctx.save();
+                ctx.globalAlpha = 0.2; 
+                ctx.fillStyle = '#FFFFAA';
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, 120, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#CCCC88';
+                ctx.beginPath(); ctx.arc(canvas.width / 2 - 40, canvas.height / 2 - 30, 25, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(canvas.width / 2 + 50, canvas.height / 2 + 20, 35, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(canvas.width / 2 + 10, canvas.height / 2 + 60, 20, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
 
             ctx.save();
             if (fudTimer > 0) {
@@ -1129,7 +1292,7 @@
                 if(obstacles.length === 0) createObstacle();
             } 
             else if (!isGameOver) {
-                let baseSpeed = 4 + score * 0.1;
+                let baseSpeed = 3.5 + score * 0.08;
                 ball.targetVx = ball.targetVx > 0 ? -baseSpeed : baseSpeed;
                 playClickSFX();
             }
@@ -1150,7 +1313,7 @@
             resetGame();
         });
         
-        setRandomStartFace();
+        resetGame();
         requestAnimationFrame(loop); 
     </script>
 </body>

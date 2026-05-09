@@ -40,7 +40,6 @@
             animation: gridMove 4s linear infinite; 
         }
 
-        /* ĐÃ FIX: Chỉ rung màn hình khi chưa Game Over */
         body.phase1:not(.game-over) #gameCanvas {
             animation: canvasShake 0.4s infinite; 
         }
@@ -482,17 +481,20 @@
             "Aliens dumped on you."             
         ];
 
+        // --- ĐÃ KHÔI PHỤC HÀM GETDISTINCTOBSTACLECOLOR BỊ XÓA NHẦM ---
         function getDistinctObstacleColor() {
             return obstaclePalette[Math.floor(Math.random() * obstaclePalette.length)];
         }
 
+        const BALL_BASE_VX = 3.2; 
+        
         const ball = {
             x: canvas.width / 2,
             y: canvas.height - 150,
             radius: 12, 
-            vx: 3.5,
-            targetVx: 3.5,
-            accel: 0.6, 
+            vx: 0, 
+            targetVx: BALL_BASE_VX, 
+            accel: 0.5, 
             visible: true
         };
 
@@ -669,7 +671,7 @@
             }
         }
 
-        // --- DRAWING SPRITES (PROFILE VIEWS) ---
+        // --- DRAWING SPRITES (PROFILE VIEWS & TROLL FRONT) ---
 
         function drawTrumpProfile(curCtx, x, y) {
             curCtx.fillStyle = '#F4A261'; 
@@ -754,22 +756,25 @@
             curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
         }
 
-        function drawTrollProfile(curCtx, x, y) {
+        function drawTrollFront(curCtx, x, y) {
             curCtx.fillStyle = '#ffffff'; 
-            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
-            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x - 6*P_SIZE_UI, y - 4*P_SIZE_UI, 12*P_SIZE_UI, 10*P_SIZE_UI); 
             
-            curCtx.fillStyle = '#000000'; 
-            curCtx.fillRect(x - 5*P_SIZE_UI, y - 2*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
-            curCtx.fillRect(x - 1*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
-            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillStyle = '#000000';
+            curCtx.fillRect(x - 4*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI);
+            curCtx.fillRect(x + 2*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI);
             
-            curCtx.fillStyle = '#000000'; 
-            curCtx.fillRect(x - 1*P_SIZE_UI, y + 2*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, P_SIZE_UI);
+            curCtx.fillRect(x + 2*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, P_SIZE_UI);
+            
+            curCtx.fillRect(x - 5*P_SIZE_UI, y + 2*P_SIZE_UI, 10*P_SIZE_UI, 3*P_SIZE_UI);
             curCtx.fillStyle = '#ffffff'; 
-            curCtx.fillRect(x + 0*P_SIZE_UI, y + 3*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x - 4*P_SIZE_UI, y + 3*P_SIZE_UI, 8*P_SIZE_UI, P_SIZE_UI);
             
-            curCtx.fillStyle = '#000000'; 
+            curCtx.fillStyle = '#000000';
+            curCtx.fillRect(x - 6*P_SIZE_UI, y + 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI);
+            curCtx.fillRect(x + 5*P_SIZE_UI, y + 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI);
+
             curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
         }
 
@@ -781,7 +786,7 @@
             else if (randomMockChoice === 2) drawCZProfile(startMockCtx, 32, 32);
             else if (randomMockChoice === 3) drawTrumpProfile(startMockCtx, 32, 32);
             else if (randomMockChoice === 4) drawPepeProfile(startMockCtx, 32, 32);
-            else drawTrollProfile(startMockCtx, 32, 32);
+            else drawTrollFront(startMockCtx, 32, 32); 
         }
 
         function drawUFO(curCtx, x, y) {
@@ -864,7 +869,7 @@
             gameSpeed = 2.2; 
             currentPhase = 0;
             
-            document.body.className = 'phase0'; // Implicitly removes game-over class
+            document.body.className = 'phase0'; 
             
             obstacles = [];
             particles = [];
@@ -873,7 +878,6 @@
             ufos = []; 
             items = []; 
             
-            // ĐÃ FIX LỖI MẤT SAO: Luôn tạo lại 40 ngôi sao khi reset game
             stars = []; 
             for(let i = 0; i < 40; i++) stars.push(new Star());
             
@@ -884,9 +888,9 @@
             gameStarted = false; 
             
             ball.x = canvas.width / 2;
-            ball.vx = 3.5;
-            ball.targetVx = 3.5;
-            ball.accel = 0.6;
+            ball.vx = 0; 
+            ball.targetVx = BALL_BASE_VX; 
+            ball.accel = 0.5; 
             ball.visible = true;
             
             scoreEl.style.opacity = '0';
@@ -966,7 +970,6 @@
             
             fudTimer = 0; 
             
-            // ĐÃ FIX: Thêm class game-over để khoá hiệu ứng rung hình nền của Phase 1
             document.body.classList.add('game-over'); 
             
             stopBGM();
@@ -1124,9 +1127,12 @@
                     scoreEl.innerText = "$" + score;
                     obs.passed = true;
                     
-                    gameSpeed += 0.06; 
-                    let baseSpeed = 3.5 + score * 0.08; 
-                    ball.targetVx = ball.targetVx > 0 ? baseSpeed : -baseSpeed;
+                    // CHỈ TĂNG GAME SPEED (Tốc độ rơi). GIỮ NGUYÊN TỐC ĐỘ NGANG
+                    gameSpeed += 0.08; 
+                    
+                    if(ball.targetVx !== 0) {
+                        ball.targetVx = ball.targetVx > 0 ? BALL_BASE_VX : -BALL_BASE_VX;
+                    }
 
                     playScoreSFX();
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
@@ -1273,9 +1279,16 @@
             }
         }
 
+        let lastInputTime = 0; 
+        
         function handleInput(e) {
             if (e.target.id === 'audioToggle') return; 
             if (boardEl.style.display === 'block') return;
+
+            let now = Date.now();
+            if (now - lastInputTime < 50) return;
+            lastInputTime = now;
+
             e.preventDefault();
             
             initAudio();
@@ -1292,8 +1305,7 @@
                 if(obstacles.length === 0) createObstacle();
             } 
             else if (!isGameOver) {
-                let baseSpeed = 3.5 + score * 0.08;
-                ball.targetVx = ball.targetVx > 0 ? -baseSpeed : baseSpeed;
+                ball.targetVx = ball.targetVx > 0 ? -BALL_BASE_VX : BALL_BASE_VX;
                 playClickSFX();
             }
         }

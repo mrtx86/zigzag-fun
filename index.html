@@ -324,7 +324,6 @@
         function playGameOverSFX() { playTone(200, 'sawtooth', 0.4, 0.1, 50); setTimeout(() => playTone(150, 'sawtooth', 0.6, 0.1, 20), 200); }
         function playUfoSFX() { if (isMuted || !audioCtx) return; playTone(800, 'sine', 0.4, 0.05, 1400); setTimeout(() => playTone(1400, 'sine', 0.4, 0.05, 800), 400); }
         function playAthSFX() { if (isMuted || !audioCtx) return; setTimeout(() => playTone(523.25, 'square', 0.1, 0.05), 0); setTimeout(() => playTone(659.25, 'square', 0.1, 0.05), 100); setTimeout(() => playTone(783.99, 'square', 0.1, 0.05), 200); setTimeout(() => playTone(1046.50, 'square', 0.4, 0.05), 300); }
-        function playBullSFX() { if (isMuted || !audioCtx) return; playTone(400, 'square', 0.1, 0.05, 800); setTimeout(() => playTone(800, 'square', 0.2, 0.05, 1200), 100); }
         function playFudSFX() { if (isMuted || !audioCtx) return; playTone(300, 'sawtooth', 0.1, 0.05, 150); setTimeout(() => playTone(150, 'sawtooth', 0.2, 0.05, 50), 100); }
 
         const bgmNotes = [130.81, 130.81, 155.56, 174.61, 196.00, 196.00, 174.61, 155.56];
@@ -400,12 +399,7 @@
         let ufos = []; 
 
         let items = [];
-        let bullTimer = 0;
         let fudTimer = 0;
-        let graceTimer = 0;
-        
-        // ĐÃ THÊM: Biến quản lý tốc độ mượt (Lerp)
-        let timeScale = 1.0; 
 
         let savedHighScore = localStorage.getItem('zigzag_crypto_ath') || 0;
         let nextSpawnDistance = 150; 
@@ -561,7 +555,7 @@
                 this.floatY = 0;
 
                 this.direction = Math.random() < 0.5 ? 1 : -1;
-                this.speed = this.type === '🎁' ? 1.5 : 2.5; 
+                this.speed = 2.5; 
                 this.range = 180; 
                 this.minX = this.x - this.range / 2;
                 this.maxX = this.x + this.range / 2;
@@ -587,53 +581,30 @@
 
                 if (dogeR > itemL && dogeL < itemR && dogeB > itemT && dogeT < itemB) {
                     this.markedForDeletion = true;
-                    if (this.type === '🎁') {
-                        bullTimer = 180; 
-                        playBullSFX();
-                        floatingTexts.push(new FloatingText(this.x, this.y, "🎁 GIFT RUN!", "#00ffff"));
-                    } else { 
-                        if (bullTimer > 0) {
-                            floatingTexts.push(new FloatingText(this.x, this.y, "IMMUNE!", "#aaaaaa"));
-                            for(let k=0; k<10; k++) particles.push(new Particle(this.x, this.y, '#32CD32'));
-                        } else {
-                            fudTimer = 120; 
-                            playFudSFX();
-                            floatingTexts.push(new FloatingText(this.x, this.y, "👾 ALIEN FUD!", "#ff3333"));
-                        }
-                    }
+                    fudTimer = 120; 
+                    playFudSFX();
+                    floatingTexts.push(new FloatingText(this.x, this.y, "👾 ALIEN FUD!", "#ff3333"));
                 }
             }
             draw() {
                 let py = this.y + Math.sin(this.floatY) * 6;
                 ctx.save();
                 
-                if (this.type === '🎁') {
-                    ctx.fillStyle = '#ff3333'; 
-                    ctx.fillRect(this.x - 14, py - 14, 28, 28);
-                    
-                    ctx.fillStyle = '#FFD700'; 
-                    ctx.fillRect(this.x - 4, py - 14, 8, 28); 
-                    ctx.fillRect(this.x - 14, py - 6, 28, 6); 
+                // Vẽ Alien Pixel
+                ctx.fillStyle = '#32CD32'; 
+                ctx.fillRect(this.x - 16, py - 14, 32, 20); 
+                ctx.fillRect(this.x - 8, py + 6, 16, 10); 
 
-                    ctx.fillStyle = '#FFD700';
-                    ctx.fillRect(this.x - 10, py - 20, 20, 6); 
-                    ctx.fillStyle = '#FFFFE0'; 
-                    ctx.fillRect(this.x - 3, py - 17, 6, 2); 
-                } else {
-                    ctx.fillStyle = '#32CD32'; 
-                    ctx.fillRect(this.x - 16, py - 14, 32, 20); 
-                    ctx.fillRect(this.x - 8, py + 6, 16, 10); 
+                ctx.fillStyle = '#ffffff'; 
+                ctx.fillRect(this.x - 12, py - 10, 8, 8); 
+                ctx.fillRect(this.x + 4, py - 10, 8, 8); 
 
-                    ctx.fillStyle = '#ffffff'; 
-                    ctx.fillRect(this.x - 12, py - 10, 8, 8); 
-                    ctx.fillRect(this.x + 4, py - 10, 8, 8); 
+                ctx.fillStyle = '#000000'; 
+                ctx.fillRect(this.x - 9, py - 7, 3, 3);
+                ctx.fillRect(this.x + 7, py - 7, 3, 3);
 
-                    ctx.fillStyle = '#000000'; 
-                    ctx.fillRect(this.x - 9, py - 7, 3, 3);
-                    ctx.fillRect(this.x + 7, py - 7, 3, 3);
-
-                    ctx.fillRect(this.x - 4, py + 1, 8, 2);
-                }
+                ctx.fillRect(this.x - 4, py + 1, 8, 2);
+                
                 ctx.restore();
             }
         }
@@ -733,9 +704,8 @@
             });
 
             if (score >= CFG.itemMinScore && Math.random() < CFG.itemSpawnChance) {
-                let type = Math.random() < 0.6 ? '🎁' : '👾'; 
                 let spawnX = 50 + Math.random() * (canvas.width - 100);
-                items.push(new Item(spawnX, -100, type));
+                items.push(new Item(spawnX, -100, '👾'));
             }
 
             nextSpawnDistance = Math.floor(Math.random() * (220 - 120 + 1)) + 120;
@@ -744,7 +714,6 @@
         function resetGame() {
             score = 0;
             gameSpeed = 2.8; 
-            timeScale = 1.0; // ĐÃ FIX: Reset lại timeScale
             
             obstacles = [];
             particles = [];
@@ -753,9 +722,7 @@
             ufos = []; 
             items = []; 
             
-            bullTimer = 0;
             fudTimer = 0;
-            graceTimer = 0;
 
             spikeOffsetY = 0;
             isGameOver = false;
@@ -778,7 +745,7 @@
             stopBGM();
         }
 
-        function drawDogeSprite(curCtx, x, y, isFlying = false, isInvincible = false) {
+        function drawDogeSprite(curCtx, x, y, isFlying = false) {
             curCtx.fillStyle = DOGE_GOLD;
             curCtx.fillRect(x - 12, y - 8, 24, 16); 
             curCtx.fillRect(x - 8, y - 12, 16, 20); 
@@ -796,22 +763,10 @@
             curCtx.fillRect(x + 8, y + 4, 4, 4); 
             curCtx.fillRect(x - 4, y - 4, 8, 4); 
 
-            if (isInvincible) {
-                curCtx.fillStyle = '#ff0000';
-                curCtx.fillRect(x - 8, y - 4, 4, 4); 
-                curCtx.fillRect(x + 4, y - 4, 4, 4); 
-                
-                curCtx.save();
-                curCtx.globalAlpha = 0.5;
-                curCtx.fillRect(x - 8, y - 60, 4, 56);
-                curCtx.fillRect(x + 4, y - 60, 4, 56);
-                curCtx.restore();
-            } else {
-                curCtx.fillStyle = DOGE_BLACK;
-                curCtx.fillRect(x - 2, y + 2, 4, 4);
-                curCtx.fillRect(x - 8, y - 4, 4, 4); 
-                curCtx.fillRect(x + 4, y - 4, 4, 4); 
-            }
+            curCtx.fillStyle = DOGE_BLACK;
+            curCtx.fillRect(x - 2, y + 2, 4, 4);
+            curCtx.fillRect(x - 8, y - 4, 4, 4); 
+            curCtx.fillRect(x + 4, y - 4, 4, 4); 
 
             if (isFlying) {
                 let flicker = Math.random();
@@ -854,10 +809,7 @@
             isGameOver = true;
             ball.visible = false;
             
-            bullTimer = 0;
             fudTimer = 0; 
-            graceTimer = 0;
-            timeScale = 1.0;
             
             stopBGM();
             container.classList.add('shake');
@@ -869,7 +821,7 @@
                 avatarCtx.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
                 drawPixelatedChart(avatarCtx, 64, 64, 0.25); 
                 avatarCtx.globalAlpha = 1;
-                drawDogeSprite(avatarCtx, 32, 32, false, false); 
+                drawDogeSprite(avatarCtx, 32, 32, false); 
 
                 scoreEl.style.opacity = '0'; 
                 finalScoreEl.innerText = "$" + score;
@@ -897,44 +849,7 @@
         }
 
         function update() {
-            let targetTimeScale = 1.0;
-            let isInvincible = false;
-
-            // --- 1. TÍNH TOÁN TRẠNG THÁI HIỆN TẠI VÀ CHỈNH MỤC TIÊU LERP ---
-            if (bullTimer > 0) {
-                bullTimer--;
-                isInvincible = true;
-                targetTimeScale = 1.5; 
-                if (bullTimer % 4 === 0) particles.push(new Particle(ball.x, ball.y, '#ff0000')); 
-                
-                // AUTOPILOT
-                if (bullTimer < 60) {
-                    let nextObs = obstacles.find(o => !o.passed);
-                    if (nextObs) {
-                        let targetCenter = nextObs.gapX + (nextObs.gapWidth / 2);
-                        let baseSpeed = 4 + score * 0.1;
-                        if (ball.x < targetCenter - 8) ball.targetVx = baseSpeed;
-                        else if (ball.x > targetCenter + 8) ball.targetVx = -baseSpeed;
-                        else ball.targetVx = 0; 
-                    }
-                }
-
-                if (bullTimer === 0) {
-                    graceTimer = 60; // Sang làm chậm
-                    ball.vx = 0;     // ĐÃ FIX: Rũ bỏ hoàn toàn đà trượt ngang
-                    ball.targetVx = 0; 
-                }
-                
-            } else if (graceTimer > 0) {
-                graceTimer--;
-                isInvincible = true; 
-                targetTimeScale = 0.4; // Mục tiêu chạy chậm
-                
-                if (graceTimer === 0 && ball.targetVx === 0) {
-                    let baseSpeed = 4 + score * 0.1;
-                    ball.targetVx = Math.random() < 0.5 ? baseSpeed : -baseSpeed;
-                }
-            }
+            let currentSpeed = gameSpeed;
 
             if (fudTimer > 0) {
                 fudTimer--;
@@ -944,18 +859,7 @@
                 }
             }
 
-            // ĐÃ FIX: LERP TIMESCALE CHO MƯỢT
-            if (timeScale < targetTimeScale) {
-                timeScale += 0.015; // Tăng dần tốc độ từ từ
-                if (timeScale > targetTimeScale) timeScale = targetTimeScale;
-            } else if (timeScale > targetTimeScale) {
-                timeScale -= 0.1; // Thắng gấp khi vô slow-mo
-                if (timeScale < targetTimeScale) timeScale = targetTimeScale;
-            }
-
-            let currentSpeed = gameSpeed * timeScale;
-
-            // --- 2. CẬP NHẬT HIỆU ỨNG VÀ MÔI TRƯỜNG ---
+            // --- 1. CẬP NHẬT HIỆU ỨNG VÀ MÔI TRƯỜNG ---
             stars.forEach(star => star.update(currentSpeed));
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
@@ -972,7 +876,7 @@
 
             if (!gameStarted || isGameOver) return;
 
-            // --- 3. CẬP NHẬT THỰC THỂ KHÁC ---
+            // --- 2. CẬP NHẬT THỰC THỂ KHÁC ---
             for (let i = items.length - 1; i >= 0; i--) {
                 items[i].update(currentSpeed);
                 if (items[i].markedForDeletion) items.splice(i, 1);
@@ -980,7 +884,7 @@
 
             for (let i = ufos.length - 1; i >= 0; i--) {
                 let u = ufos[i];
-                u.t += u.speed * timeScale; 
+                u.t += u.speed; 
                 
                 if (u.t >= 1) {
                     ufos.splice(i, 1); 
@@ -993,59 +897,27 @@
                     let ufoL = u.x - 16, ufoR = u.x + 16, ufoT = u.y - 14, ufoB = u.y + 16;
                     
                     if (dogeR > ufoL && dogeL < ufoR && dogeB > ufoT && dogeT < ufoB) {
-                        if (!isInvincible) {
-                            triggerGameOver(); return;
-                        } else {
-                            for(let k=0; k<15; k++) particles.push(new Particle(u.x, u.y, '#00ffff'));
-                            ufos.splice(i, 1);
-                        }
+                        triggerGameOver(); return;
                     }
                 }
             }
 
             spikeOffsetY = (spikeOffsetY + currentSpeed) % spikeHeight;
             
-            // --- 4. TÍNH TOÁN VẬT LÝ NGANG ---
-            if (ball.targetVx !== 0) {
-                if (ball.vx < ball.targetVx) {
-                    ball.vx += ball.accel;
-                    if (ball.vx > ball.targetVx) ball.vx = ball.targetVx;
-                } else if (ball.vx > ball.targetVx) {
-                    ball.vx -= ball.accel;
-                    if (ball.vx < ball.targetVx) ball.vx = ball.targetVx;
-                }
-            } else {
-                // ĐÃ FIX: Hãm phanh ngang mượt mà khi targetVx = 0
-                if (ball.vx > 0) {
-                    ball.vx -= ball.accel;
-                    if (ball.vx < 0) ball.vx = 0;
-                } else if (ball.vx < 0) {
-                    ball.vx += ball.accel;
-                    if (ball.vx > 0) ball.vx = 0;
-                }
+            // --- 3. TÍNH TOÁN VẬT LÝ NGANG ---
+            if (ball.vx < ball.targetVx) {
+                ball.vx += ball.accel;
+                if (ball.vx > ball.targetVx) ball.vx = ball.targetVx;
+            } else if (ball.vx > ball.targetVx) {
+                ball.vx -= ball.accel;
+                if (ball.vx < ball.targetVx) ball.vx = ball.targetVx;
             }
-            
-            // ĐÃ FIX: Áp dụng timeScale cho bước chạy ngang để khớp Bullet-time
-            ball.x += ball.vx * timeScale;
+            ball.x += ball.vx;
 
             let hitboxRadius = 10;
             let deathZone = spikeWidth + wallBase - 4; 
             if (ball.x - hitboxRadius <= deathZone || ball.x + hitboxRadius >= canvas.width - deathZone) {
-                if (!isInvincible) {
-                    triggerGameOver(); return;
-                } else {
-                    let baseSpeed = 4 + score * 0.1;
-                    if (ball.x - hitboxRadius <= deathZone) { 
-                        ball.x = deathZone + hitboxRadius; 
-                        ball.targetVx = baseSpeed; 
-                        ball.vx = ball.targetVx; 
-                    }
-                    if (ball.x + hitboxRadius >= canvas.width - deathZone) { 
-                        ball.x = canvas.width - deathZone - hitboxRadius; 
-                        ball.targetVx = -baseSpeed; 
-                        ball.vx = ball.targetVx; 
-                    }
-                }
+                triggerGameOver(); return;
             }
 
             for (let i = 0; i < obstacles.length; i++) {
@@ -1054,9 +926,7 @@
 
                 if (ball.y - hitboxRadius < obs.y + obstacleHeight && ball.y + hitboxRadius > obs.y) {
                     if (ball.x - hitboxRadius < obs.gapX || ball.x + hitboxRadius > obs.gapX + obs.gapWidth) {
-                        if (!isInvincible) {
-                            triggerGameOver(); return;
-                        }
+                        triggerGameOver(); return;
                     }
                 }
 
@@ -1067,16 +937,14 @@
                     
                     gameSpeed += 0.1; 
                     let baseSpeed = 4 + score * 0.1;
-                    
-                    if(ball.targetVx !== 0) {
-                        ball.targetVx = ball.targetVx > 0 ? baseSpeed : -baseSpeed;
-                    } 
+                    ball.targetVx = ball.targetVx > 0 ? baseSpeed : -baseSpeed;
                     if (ball.accel < 1.5) ball.accel += 0.01;
 
                     playScoreSFX();
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
 
-                    if (score > CFG.ufoMinScore && (score + 1) % 5 === 0) { 
+                    // ĐÃ FIX LỖI UFO KHÔNG XUẤT HIỆN
+                    if (score > 0 && (score + 1) % 5 === 0) { 
                         if (ufos.length === 0 && Math.random() < CFG.ufoSpawnChance) { 
                             playUfoSFX();
                             let speed = 0.008 + (score * 0.0002); 
@@ -1158,13 +1026,7 @@
             if (ball.visible) {
                 let snapX = Math.floor(ball.x / P_SIZE) * P_SIZE;
                 let snapY = Math.floor(ball.y / P_SIZE) * P_SIZE;
-                
-                if (graceTimer > 0) {
-                    ctx.globalAlpha = (Math.floor(Date.now() / 100) % 2 === 0) ? 0.3 : 1.0;
-                }
-                
-                drawDogeSprite(ctx, snapX, snapY, gameStarted && !isGameOver, bullTimer > 0);
-                ctx.globalAlpha = 1.0; 
+                drawDogeSprite(ctx, snapX, snapY, gameStarted && !isGameOver);
             }
 
             ufos.forEach(u => {
@@ -1228,12 +1090,7 @@
             } 
             else if (!isGameOver) {
                 let baseSpeed = 4 + score * 0.1;
-                if (ball.targetVx === 0) {
-                    ball.targetVx = ball.vx > 0 ? -baseSpeed : baseSpeed;
-                } else {
-                    ball.targetVx = ball.targetVx > 0 ? -baseSpeed : baseSpeed;
-                }
-                
+                ball.targetVx = ball.targetVx > 0 ? -baseSpeed : baseSpeed;
                 playClickSFX();
             }
         }

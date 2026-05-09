@@ -258,13 +258,15 @@
 
         const CONFIG = {
             test: {
-                itemMinScore: 0,
+                itemMinScore: 0,        
                 itemSpawnChance: 1.0,   
+                ufoMinScore: 2,         
                 ufoSpawnChance: 1.0     
             },
             prod: {
-                itemMinScore: 2,
+                itemMinScore: 2,        
                 itemSpawnChance: 0.15,  
+                ufoMinScore: 4,         
                 ufoSpawnChance: 0.5     
             }
         };
@@ -325,6 +327,13 @@
         function playUfoSFX() { if (isMuted || !audioCtx) return; playTone(800, 'sine', 0.4, 0.05, 1400); setTimeout(() => playTone(1400, 'sine', 0.4, 0.05, 800), 400); }
         function playAthSFX() { if (isMuted || !audioCtx) return; setTimeout(() => playTone(523.25, 'square', 0.1, 0.05), 0); setTimeout(() => playTone(659.25, 'square', 0.1, 0.05), 100); setTimeout(() => playTone(783.99, 'square', 0.1, 0.05), 200); setTimeout(() => playTone(1046.50, 'square', 0.4, 0.05), 300); }
         function playFudSFX() { if (isMuted || !audioCtx) return; playTone(300, 'sawtooth', 0.1, 0.05, 150); setTimeout(() => playTone(150, 'sawtooth', 0.2, 0.05, 50), 100); }
+        
+        // ÂM THANH MỚI: ALIEN XUẤT HIỆN
+        function playAlienSpawnSFX() {
+            if (isMuted || !audioCtx) return;
+            playTone(1500, 'square', 0.1, 0.03, 1000);
+            setTimeout(() => playTone(1800, 'square', 0.1, 0.03, 1200), 100);
+        }
 
         const bgmNotes = [130.81, 130.81, 155.56, 174.61, 196.00, 196.00, 174.61, 155.56];
         let bgmIndex = 0;
@@ -547,10 +556,9 @@
         }
 
         class Item {
-            constructor(x, y, type) {
+            constructor(x, y) {
                 this.x = x; 
                 this.y = y; 
-                this.type = type; 
                 this.markedForDeletion = false;
                 this.floatY = 0;
 
@@ -609,60 +617,82 @@
             }
         }
 
-        // --- DRAWING SPRITES ---
+        // --- DRAWING SPRITES (PROFILE VIEWS) ---
 
-        function drawTrumpSprite(curCtx, x, y) {
-            curCtx.fillStyle = '#F4A261';
-            curCtx.fillRect(x - 4*P_SIZE_UI, y - 4*P_SIZE_UI, 9*P_SIZE_UI, 9*P_SIZE_UI); 
-            curCtx.fillRect(x - 5*P_SIZE_UI, y, P_SIZE_UI, 4*P_SIZE_UI);
-            curCtx.fillStyle = '#E9C46A';
+        function drawTrumpProfile(curCtx, x, y) {
+            curCtx.fillStyle = '#F4A261'; 
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI);   
+
+            curCtx.fillStyle = '#E9C46A'; 
             curCtx.fillRect(x - 6*P_SIZE_UI, y - 6*P_SIZE_UI, 12*P_SIZE_UI, 3*P_SIZE_UI); 
-            curCtx.fillRect(x + 2*P_SIZE_UI, y - 7*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
-            curCtx.fillRect(x - 4*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 7*P_SIZE_UI, 5*P_SIZE_UI, 2*P_SIZE_UI);   
+            curCtx.fillRect(x - 4*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, 4*P_SIZE_UI);   
+
             curCtx.fillStyle = '#000000';
-            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI);   
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI);   
+
+            curCtx.fillStyle = '#1a1a5c'; 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillStyle = '#cc0000'; 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y + 6*P_SIZE_UI, 2*P_SIZE_UI, 3*P_SIZE_UI); 
         }
 
-        function drawElonSprite(curCtx, x, y) {
+        function drawVitalikProfile(curCtx, x, y) {
+            curCtx.fillStyle = '#DDBE96'; 
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillStyle = '#8D6E63'; 
+            curCtx.fillRect(x - 5*P_SIZE_UI, y - 5*P_SIZE_UI, 3*P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 6*P_SIZE_UI, 5*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 5*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillRect(x + 3*P_SIZE_UI, y - 4*P_SIZE_UI, 2*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillStyle = '#000000';
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI);   
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillStyle = '#ADD8E6'; 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
+        }
+
+        function drawElonProfile(curCtx, x, y) {
             curCtx.fillStyle = '#E0AC69';
             curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
-            curCtx.fillRect(x - 3*P_SIZE_UI, y + 4*P_SIZE_UI, 6*P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillStyle = '#8D6E63';
-            curCtx.fillRect(x - 5*P_SIZE_UI, y - 6*P_SIZE_UI, 10*P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillRect(x - 6*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 3*P_SIZE_UI); 
-            curCtx.fillRect(x + 5*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillStyle = '#8D6E63'; 
+            curCtx.fillRect(x - 6*P_SIZE_UI, y - 6*P_SIZE_UI, 12*P_SIZE_UI, 3*P_SIZE_UI); 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 7*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillRect(x - 4*P_SIZE_UI, y - 3*P_SIZE_UI, P_SIZE_UI, 3*P_SIZE_UI);   
+            curCtx.fillRect(x + 3*P_SIZE_UI, y - 3*P_SIZE_UI, 2*P_SIZE_UI, 5*P_SIZE_UI); 
             curCtx.fillStyle = '#000000';
-            curCtx.fillRect(x - 3*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillRect(x + 2*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillRect(x - 2*P_SIZE_UI, y + 2*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI);   
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillStyle = '#000000'; 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
         }
 
-        function drawCZSprite(curCtx, x, y) {
+        function drawCZProfile(curCtx, x, y) {
             curCtx.fillStyle = '#DDBE96';
             curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, 10*P_SIZE_UI, 10*P_SIZE_UI); 
-            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI); 
-            curCtx.fillStyle = '#9E9E9E';
-            curCtx.fillRect(x - 5*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillRect(x + 4*P_SIZE_UI, y - 4*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y - 5*P_SIZE_UI, 6*P_SIZE_UI, P_SIZE_UI);   
             curCtx.fillStyle = '#000000';
-            curCtx.fillRect(x - 3*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillRect(x + 2*P_SIZE_UI, y - 1*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI); 
-            curCtx.fillRect(x - 2*P_SIZE_UI, y + 2*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
-            curCtx.fillStyle = '#9E9E9E';
-            curCtx.fillRect(x - 2*P_SIZE_UI, y + 4*P_SIZE_UI, 4*P_SIZE_UI, P_SIZE_UI); 
-            curCtx.fillRect(x - 1*P_SIZE_UI, y + 3*P_SIZE_UI, 2*P_SIZE_UI, P_SIZE_UI); 
+            curCtx.fillRect(x + 1*P_SIZE_UI, y - 2*P_SIZE_UI, P_SIZE_UI, 2*P_SIZE_UI);   
+            curCtx.fillRect(x + 2*P_SIZE_UI, y + 2*P_SIZE_UI, 3*P_SIZE_UI, P_SIZE_UI);   
+            curCtx.fillStyle = '#000000'; 
+            curCtx.fillRect(x - 3*P_SIZE_UI, y + 6*P_SIZE_UI, 6*P_SIZE_UI, 3*P_SIZE_UI); 
         }
 
         function setRandomStartFace() {
             startMockCtx.clearRect(0, 0, startMockCanvas.width, startMockCanvas.height);
-            const randomMockChoice = Math.floor(Math.random() * 3);
+            const randomMockChoice = Math.floor(Math.random() * 4); 
             if (randomMockChoice === 0) {
-                drawTrumpSprite(startMockCtx, 32, 32);
+                drawVitalikProfile(startMockCtx, 32, 32);
             } else if (randomMockChoice === 1) {
-                drawElonSprite(startMockCtx, 32, 32);
+                drawElonProfile(startMockCtx, 32, 32);
+            } else if (randomMockChoice === 2) {
+                drawCZProfile(startMockCtx, 32, 32);
             } else {
-                drawCZSprite(startMockCtx, 32, 32);
+                drawTrumpProfile(startMockCtx, 32, 32);
             }
         }
 
@@ -703,9 +733,20 @@
                 color: getDistinctObstacleColor() 
             });
 
-            if (score >= CFG.itemMinScore && Math.random() < CFG.itemSpawnChance) {
+            let futureScore = score + obstacles.length; 
+            
+            let isSafeZone = false;
+            if (futureScore >= CFG.ufoMinScore - 1) { 
+                let mod = futureScore % 5;
+                if (mod === 3 || mod === 4 || mod === 0) {
+                    isSafeZone = true; 
+                }
+            }
+
+            if (!isSafeZone && items.length === 0 && futureScore >= CFG.itemMinScore && Math.random() < CFG.itemSpawnChance) {
                 let spawnX = 50 + Math.random() * (canvas.width - 100);
-                items.push(new Item(spawnX, -100, '👾'));
+                items.push(new Item(spawnX, -100)); 
+                playAlienSpawnSFX(); // PHÁT ÂM THANH KHI ALIEN XUẤT HIỆN
             }
 
             nextSpawnDistance = Math.floor(Math.random() * (220 - 120 + 1)) + 120;
@@ -943,9 +984,8 @@
                     playScoreSFX();
                     floatingTexts.push(new FloatingText(ball.x, ball.y - 30, "+$1"));
 
-                    // ĐÃ FIX LỖI UFO KHÔNG XUẤT HIỆN
-                    if (score > 0 && (score + 1) % 5 === 0) { 
-                        if (ufos.length === 0 && Math.random() < CFG.ufoSpawnChance) { 
+                    if (score >= CFG.ufoMinScore && (score + 1) % 5 === 0) { 
+                        if (ufos.length === 0 && items.length === 0 && Math.random() < CFG.ufoSpawnChance) { 
                             playUfoSFX();
                             let speed = 0.008 + (score * 0.0002); 
                             if (speed > 0.02) speed = 0.02;
